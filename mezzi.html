@@ -595,6 +595,7 @@
             measurementId: "G-F9GTHW5MHQ"
         };
 
+        
         // Initialize Firebase
         try {
             firebase.initializeApp(firebaseConfig);
@@ -614,12 +615,75 @@
         let costByTypeChart = null;
         let costByVehicleChart = null;
 
+        // ==================== IMAGE COMPRESSION UTILITY ====================
+        /**
+         * Comprime un'immagine fino a una dimensione target.
+         * @param {string} dataUrl - L'URL dati Base64 dell'immagine originale.
+         * @param {number} maxSizeKB - Dimensione massima desiderata in KB (default 700KB).
+         * @returns {Promise<string>} - Promise che risolve con il Base64 compresso.
+         */
+        function compressImage(dataUrl, maxSizeKB = 700) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.src = dataUrl;
+                
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Ridimensionamento intelligente: max 1920px larghezza/altezza mantenendo ratio
+                    let width = img.width;
+                    let height = img.height;
+                    const MAX_DIM = 1920;
+
+                    if (width > height && width > MAX_DIM) {
+                        height *= MAX_DIM / width;
+                        width = MAX_DIM;
+                    } else if (height > MAX_DIM) {
+                        width *= MAX_DIM / height;
+                        height = MAX_DIM;
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // Compressione iterativa della qualità
+                    let quality = 0.8; // Inizia dall'80%
+                    const maxAttempts = 10;
+                    let attempts = 0;
+                    
+                    const tryCompress = () => {
+                        attempts++;
+                        const compressedData = canvas.toDataURL('image/jpeg', quality);
+                        const sizeInKB = (compressedData.length - 'data:image/jpeg;base64,'.length) * 0.75 / 1024;
+
+                        if (sizeInKB <= maxSizeKB || quality <= 0.1 || attempts >= maxAttempts) {
+                            // Se siamo ancora sopra il limite ma abbiamo finito i tentativi, accettiamo il risultato
+                            if (sizeInKB > maxSizeKB && attempts >= maxAttempts) {
+                                console.warn(`Immagine compressa al limite (${sizeInKB.toFixed(0)}KB). Qualità: ${quality.toFixed(2)}`);
+                            }
+                            resolve(compressedData);
+                        } else {
+                            // Riduci la qualità e riprova
+                            quality -= 0.1;
+                            // Uso setTimeout per evitare di bloccare l'UI durante il loop
+                            setTimeout(tryCompress, 10); 
+                        }
+                    };
+
+                    tryCompress();
+                };
+                
+                img.onerror = (err) => reject(err);
+            });
+        }
+
         // ==================== INIT & REALTIME LISTENER ====================
         function init() {
             const loading = document.getElementById('loadingState');
             const grid = document.getElementById('vehiclesGrid');
             
-            // Snapshot listener
             db.collection('vehicles').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
                 vehicles = [];
                 snapshot.forEach(doc => {
@@ -639,7 +703,6 @@
                     <div class="text-red-500 flex flex-col items-center">
                         <svg class="w-12 h-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                         <p class="font-semibold">Impossibile caricare i dati</p>
-                        <p class="text-sm opacity-70 mt-1">Verifica la connessione o i permessi Firebase.</p>
                     </div>
                 `;
             });
@@ -671,11 +734,9 @@
                     const photos = v.photos || {};
                     const records = v.records || [];
                     
-                    // Logic for stats
                     const lastKm = v.km ? v.km : (records.length > 0 ? Math.max(...records.map(r => parseInt(r.km) || 0)) : 0);
                     const totalCost = records.reduce((sum, r) => sum + (parseFloat(r.cost) || 0), 0);
                     
-                    // Date Logic for alerts
                     const today = new Date();
                     const getDaysDiff = (dateStr) => {
                         if (!dateStr) return null;
@@ -765,12 +826,11 @@
                 [v.scadenzaAssicurazione, v.scadenzaRevisione].forEach(d => {
                     if(d) {
                         const diff = (new Date(d) - today) / (1000 * 60 * 60 * 24);
-                        if (diff < 30 && diff > -365) expiring++; // Count only if not anciently expired
+                        if (diff < 30 && diff > -365) expiring++;
                     }
                 });
             });
 
-            // Animate Numbers
             animateValue("statTotal", parseInt(document.getElementById("statTotal").innerText), total, 500);
             animateValue("statCars", parseInt(document.getElementById("statCars").innerText), cars, 500);
             animateValue("statVans", parseInt(document.getElementById("statVans").innerText), vans, 500);
@@ -794,7 +854,6 @@
         }
 
         function updateCharts() {
-            // Cost by Type
             const costByType = {};
             const typeColors = { 'Auto': '#00c8ff', 'Furgone': '#f472b6', 'Camion': '#a78bfa', 'Moto': '#fbbf24' };
             
@@ -827,7 +886,6 @@
                 }
             });
 
-            // Cost by Vehicle (Top 5)
             const costByVehicle = vehicles.map(v => ({
                 label: v.targa,
                 value: (v.records || []).reduce((s, r) => s + (parseFloat(r.cost) || 0), 0)
@@ -861,37 +919,32 @@
 
         // ==================== CRUD OPERATIONS ====================
         
-       async function saveVehicle(e) {
+        async function saveVehicle(e) {
             e.preventDefault();
             
             const btn = document.getElementById('btnSaveVehicle');
             const originalText = btn.innerHTML;
             
-            // Stato di caricamento
             btn.innerHTML = `<svg class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Salvataggio...`;
             btn.disabled = true;
 
             const id = document.getElementById('vehicleId').value;
             
-            // Costruzione oggetto dati
             const payload = {
                 targa: document.getElementById('targa').value.trim().toUpperCase(),
                 tipologia: document.getElementById('tipologia').value,
                 note: document.getElementById('note').value.trim(),
                 scadenzaAssicurazione: document.getElementById('scadenzaAssicurazione').value,
                 scadenzaRevisione: document.getElementById('scadenzaRevisione').value,
-                // Usiamo le foto caricate, se non ci sono rimangono null o vuote
                 photos: tempPhotos, 
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             };
 
             try {
                 if (id) {
-                    // Aggiornamento veicolo esistente
                     await db.collection('vehicles').doc(id).update(payload);
                     showToast('Veicolo aggiornato con successo', 'success');
                 } else {
-                    // Creazione nuovo veicolo
                     payload.records = [];
                     payload.createdAt = firebase.firestore.FieldValue.serverTimestamp();
                     await db.collection('vehicles').add(payload);
@@ -899,82 +952,72 @@
                 }
                 closeVehicleModal();
             } catch (err) {
-                console.error("Errore Firebase Dettagliato:", err);
-                
-                // Messaggio errore leggibile tramite Toast
+                console.error("Errore Firebase:", err);
                 let errorMsg = "Errore generico.";
-                if (err.code === 'permission-denied') {
-                    errorMsg = "Permesso negato. Controlla le Regole Firestore.";
-                } else if (err.code === 'not-found') {
-                    errorMsg = "Database non trovato.";
-                }
-                
+                if (err.code === 'permission-denied') errorMsg = "Permesso negato.";
+                else if (err.message.includes("Value for argument")) errorMsg = "Dati non validi (probabile dimensione eccessiva).";
                 showToast("Salvataggio fallito: " + errorMsg, "error");
             } finally {
-                // Ripristina bottone
                 btn.innerHTML = originalText;
                 btn.disabled = false;
             }
         }
 
         async function saveIntervention(e) {
-    e.preventDefault();
-    const btn = document.getElementById('btnSaveIntervention');
-    btn.disabled = true;
-    btn.textContent = 'Salvataggio...';
+            e.preventDefault();
+            const btn = document.getElementById('btnSaveIntervention');
+            btn.disabled = true;
+            btn.innerHTML = `<svg class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Salvataggio...`;
 
-    const inputKm = parseInt(document.getElementById('interventionKm').value);
+            const inputKm = parseInt(document.getElementById('interventionKm').value);
 
-    const record = {
-        id: Date.now().toString(),
-        type: document.getElementById('interventionType').value,
-        km: inputKm,
-        date: document.getElementById('interventionDate').value,
-        cost: parseFloat(document.getElementById('interventionCost').value) || 0,
-        notes: document.getElementById('interventionNotes').value.trim(),
-        photos: tempInterventionPhotos
-    };
+            const record = {
+                id: Date.now().toString(),
+                type: document.getElementById('interventionType').value,
+                km: inputKm,
+                date: document.getElementById('interventionDate').value,
+                cost: parseFloat(document.getElementById('interventionCost').value) || 0,
+                notes: document.getElementById('interventionNotes').value.trim(),
+                photos: tempInterventionPhotos
+            };
 
-    // Recupero veicolo per gestire il merge delle foto (mantenendo la logica precedente)
-    const v = vehicles.find(x => x.id === currentVehicleId);
-    
-    // Logica Foto: Mantengo quelle vecchie se non caricate nuove, aggiorno se caricate
-    let finalPhotos = { ...(v.photos || {}) };
-    ['front', 'back', 'left', 'right'].forEach(side => {
-        if (tempInterventionPhotos[side]) {
-            finalPhotos[side] = tempInterventionPhotos[side];
+            const v = vehicles.find(x => x.id === currentVehicleId);
+            let finalPhotos = { ...(v.photos || {}) };
+            
+            ['front', 'back', 'left', 'right'].forEach(side => {
+                if (tempInterventionPhotos[side]) {
+                    finalPhotos[side] = tempInterventionPhotos[side];
+                }
+            });
+
+            const updates = {
+                km: inputKm,
+                records: firebase.firestore.FieldValue.arrayUnion(record),
+                photos: finalPhotos,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            try {
+                await db.collection('vehicles').doc(currentVehicleId).update(updates);
+                showToast('Intervento registrato', 'success');
+                closeInterventionModal();
+            } catch (err) {
+                console.error(err);
+                showToast('Errore salvataggio intervento', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Registra Intervento`;
+            }
         }
-    });
-
-    // AGGIORNAMENTO CRITICO: Imposto il chilometraggio attuale del veicolo
-    const updates = {
-        km: inputKm, // <--- QUESTO AGGIORNA I KM DEL VEICOLO
-        records: firebase.firestore.FieldValue.arrayUnion(record),
-        photos: finalPhotos,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
-
-    try {
-        await db.collection('vehicles').doc(currentVehicleId).update(updates);
-        showToast('Intervento registrato e KM aggiornati', 'success');
-        closeInterventionModal();
-    } catch (err) {
-        console.error(err);
-        showToast('Errore salvataggio intervento', 'error');
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Registra Intervento`;
-    }
-}
 
         async function confirmDelete() {
             if (!currentDeleteId) return;
             try {
                 await db.collection('vehicles').doc(currentDeleteId).delete();
-                showToast('Veicolo eliminato definitivamente', 'success');
+                showToast('Veicolo eliminato', 'success');
                 closeDeleteModal();
             } catch (err) {
-                showToast('Errore durante l\'eliminazione', 'error');
+                showToast('Errore eliminazione', 'error');
             }
         }
 
@@ -983,11 +1026,11 @@
             const modal = document.getElementById('vehicleModal');
             document.getElementById('vehicleForm').reset();
             
-            // Reset Photos
             tempPhotos = { front: null, back: null, left: null, right: null };
             ['front', 'back', 'left', 'right'].forEach(s => {
-                const img = document.getElementById(`photo${s.charAt(0).toUpperCase() + s.slice(1)}Img`);
-                const ph = document.getElementById(`photo${s.charAt(0).toUpperCase() + s.slice(1)}Placeholder`);
+                const sCap = s.charAt(0).toUpperCase() + s.slice(1);
+                const img = document.getElementById(`photo${sCap}Img`);
+                const ph = document.getElementById(`photo${sCap}Placeholder`);
                 img.classList.add('hidden'); img.src = '';
                 ph.classList.remove('hidden');
             });
@@ -1002,14 +1045,13 @@
                 document.getElementById('scadenzaAssicurazione').value = v.scadenzaAssicurazione || '';
                 document.getElementById('scadenzaRevisione').value = v.scadenzaRevisione || '';
                 
-                // Load existing photos
                 if(v.photos) {
                     Object.keys(v.photos).forEach(side => {
                         if(v.photos[side]) {
                             tempPhotos[side] = v.photos[side];
-                            const s = side.charAt(0).toUpperCase() + side.slice(1);
-                            const img = document.getElementById(`photo${s}Img`);
-                            const ph = document.getElementById(`photo${s}Placeholder`);
+                            const sCap = side.charAt(0).toUpperCase() + side.slice(1);
+                            const img = document.getElementById(`photo${sCap}Img`);
+                            const ph = document.getElementById(`photo${sCap}Placeholder`);
                             img.src = v.photos[side];
                             img.classList.remove('hidden');
                             ph.classList.add('hidden');
@@ -1029,15 +1071,15 @@
         function openInterventionModal(id) {
             currentVehicleId = id;
             const v = vehicles.find(x => x.id === id);
-            tempInterventionPhotos = { front: null, back: null, left: null, right: null }; // Reset intervention photos
+            tempInterventionPhotos = { front: null, back: null, left: null, right: null };
             document.getElementById('interventionForm').reset();
             document.getElementById('interventionDate').value = new Date().toISOString().split('T')[0];
             document.getElementById('interventionSubtitle').textContent = `${v.targa} - ${v.tipologia}`;
             
-            // Reset UI intervention photos
             ['front', 'back', 'left', 'right'].forEach(s => {
-                const img = document.getElementById(`intPhoto${s.charAt(0).toUpperCase() + s.slice(1)}Img`);
-                const ph = document.getElementById(`intPhoto${s.charAt(0).toUpperCase() + s.slice(1)}Placeholder`);
+                const sCap = s.charAt(0).toUpperCase() + s.slice(1);
+                const img = document.getElementById(`intPhoto${sCap}Img`);
+                const ph = document.getElementById(`intPhoto${sCap}Placeholder`);
                 img.classList.add('hidden'); img.src = '';
                 ph.classList.remove('hidden');
             });
@@ -1061,7 +1103,7 @@
             } else {
                 const sorted = [...records].sort((a, b) => new Date(b.date) - new Date(a.date));
                 content.innerHTML = sorted.map((r, idx) => `
-                    <div class="timeline-item ${idx === sorted.length - 1 ? '' : ''}">
+                    <div class="timeline-item">
                         <div class="timeline-dot bg-[var(--accent)] shadow-[0_0_10px_var(--accent)]"></div>
                         <div class="bg-[var(--card)] rounded-lg p-4 ml-2 mb-3 border border-[var(--border)] hover:border-[var(--border-focus)] transition-colors">
                             <div class="flex justify-between items-start mb-1">
@@ -1092,47 +1134,64 @@
         }
         function closePhotoModal() { document.getElementById('photoModal').classList.add('hidden'); document.getElementById('photoModal').classList.remove('flex'); }
 
-        // ==================== PHOTO HANDLERS ====================
+        // ==================== PHOTO HANDLERS (CON COMPRESSIONE) ====================
         function triggerPhotoUpload(side) { currentPhotoSide = side; document.getElementById('photoInput').click(); }
-        function handlePhotoUpload(e) {
+        
+        async function handlePhotoUpload(e) {
             const file = e.target.files[0];
             if (file) {
-                // Firestore document size limit is 1MB. We need to be careful.
-                // Limiting to ~700KB to leave room for other fields.
-                if(file.size > 700000) { 
-                    showToast("L'immagine è troppo grande (max 700KB per limiti Firestore)", "error"); 
-                    return; 
-                }
+                showToast("Compressione immagine in corso...", "info");
+                
+                // Leggi come DataURL
                 const reader = new FileReader();
-                reader.onload = function(ev) {
-                    tempPhotos[currentPhotoSide] = ev.target.result;
-                    const s = currentPhotoSide.charAt(0).toUpperCase() + currentPhotoSide.slice(1);
-                    document.getElementById(`photo${s}Img`).src = ev.target.result;
-                    document.getElementById(`photo${s}Img`).classList.remove('hidden');
-                    document.getElementById(`photo${s}Placeholder`).classList.add('hidden');
+                reader.onload = async function(ev) {
+                    try {
+                        // COMPRESS IMAGE
+                        const compressedData = await compressImage(ev.target.result, 700);
+                        
+                        tempPhotos[currentPhotoSide] = compressedData;
+                        const s = currentPhotoSide.charAt(0).toUpperCase() + currentPhotoSide.slice(1);
+                        document.getElementById(`photo${s}Img`).src = compressedData;
+                        document.getElementById(`photo${s}Img`).classList.remove('hidden');
+                        document.getElementById(`photo${s}Placeholder`).classList.add('hidden');
+                        
+                        showToast("Immagine caricata e compressa", "success");
+                    } catch (err) {
+                        console.error(err);
+                        showToast("Errore durante la compressione", "error");
+                    }
                 };
                 reader.readAsDataURL(file);
             }
-            e.target.value = ''; // Reset input
+            e.target.value = ''; 
         }
 
         function triggerInterventionPhotoUpload(side) { currentInterventionPhotoSide = side; document.getElementById('intPhotoInput').click(); }
-        function handleInterventionPhotoUpload(e) {
+        
+        async function handleInterventionPhotoUpload(e) {
             const file = e.target.files[0];
             if (file) {
-                if(file.size > 700000) { 
-                    showToast("L'immagine è troppo grande (max 700KB)", "error"); 
-                    return; 
-                }
+                showToast("Compressione immagine in corso...", "info");
+                
                 const reader = new FileReader();
-                reader.onload = function(ev) {
-                    tempInterventionPhotos[currentInterventionPhotoSide] = ev.target.result;
-                    const s = currentInterventionPhotoSide.charAt(0).toUpperCase() + currentInterventionPhotoSide.slice(1);
-                    const img = document.getElementById(`intPhoto${s}Img`);
-                    const ph = document.getElementById(`intPhoto${s}Placeholder`);
-                    img.src = ev.target.result;
-                    img.classList.remove('hidden');
-                    ph.classList.add('hidden');
+                reader.onload = async function(ev) {
+                    try {
+                        // COMPRESS IMAGE
+                        const compressedData = await compressImage(ev.target.result, 700);
+                        
+                        tempInterventionPhotos[currentInterventionPhotoSide] = compressedData;
+                        const s = currentInterventionPhotoSide.charAt(0).toUpperCase() + currentInterventionPhotoSide.slice(1);
+                        const img = document.getElementById(`intPhoto${s}Img`);
+                        const ph = document.getElementById(`intPhoto${s}Placeholder`);
+                        img.src = compressedData;
+                        img.classList.remove('hidden');
+                        ph.classList.add('hidden');
+                        
+                        showToast("Immagine pronta", "success");
+                    } catch (err) {
+                        console.error(err);
+                        showToast("Errore compressione", "error");
+                    }
                 };
                 reader.readAsDataURL(file);
             }
@@ -1149,7 +1208,6 @@
                     csv += `${v.targa};${v.tipologia};;;;;;\n`;
                 } else {
                     v.records.forEach(r => {
-                        // Escape quotes in notes
                         const safeNotes = r.notes ? r.notes.replace(/"/g, '""') : '';
                         csv += `${v.targa};${v.tipologia};${r.km};${r.date};${r.type};${r.cost};"${safeNotes}"\n`;
                     });
@@ -1183,7 +1241,6 @@
             
             container.appendChild(toast);
             
-            // Animation trigger
             requestAnimationFrame(() => {
                 toast.classList.remove('toast-enter');
                 toast.classList.add('toast-enter-active');
