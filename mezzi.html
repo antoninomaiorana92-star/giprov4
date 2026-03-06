@@ -583,16 +583,15 @@
 
     <script>
         // ==================== FIREBASE CONFIG ====================
-        // NOTA: In produzione non inserire mai le chiavi API direttamente nel codice client se non necessario.
-        // Qui uso i placeholder, reinserisci le tue chiavi originali per far funzionare l'app.
+        // INSERISCI QUI LE TUE CREDENZIALI FIREBASE SE NON SONO GIÀ PRESENTI
         const firebaseConfig = {
             apiKey: "AIzaSyA1y-xr5cZ9kKeO2nIVSiDRBJUN5ZjHTHU",
-  authDomain: "gestionemezzi-490b7.firebaseapp.com",
-  projectId: "gestionemezzi-490b7",
-  storageBucket: "gestionemezzi-490b7.firebasestorage.app",
-  messagingSenderId: "447482604727",
-  appId: "1:447482604727:web:e418f65b8f15453032f132",
-  measurementId: "G-F9GTHW5MHQ"
+            authDomain: "gestionemezzi-490b7.firebaseapp.com",
+            projectId: "gestionemezzi-490b7",
+            storageBucket: "gestionemezzi-490b7.firebasestorage.app",
+            messagingSenderId: "447482604727",
+            appId: "1:447482604727:web:e418f65b8f15453032f132",
+            measurementId: "G-F9GTHW5MHQ"
         };
 
         
@@ -615,14 +614,12 @@
         let costByTypeChart = null;
         let costByVehicleChart = null;
 
-        // ==================== IMAGE COMPRESSION UTILITY ====================
+        // ==================== IMAGE COMPRESSION UTILITY (FIXED) ====================
         /**
-         * Comprime un'immagine fino a una dimensione target.
-         * @param {string} dataUrl - L'URL dati Base64 dell'immagine originale.
-         * @param {number} maxSizeKB - Dimensione massima desiderata in KB (default 700KB).
-         * @returns {Promise<string>} - Promise che risolve con il Base64 compresso.
+         * Comprime un'immagine per adattarla al limite di Firebase (1MB total document).
+         * Target: ~150KB per foto per stare tranquilli con 4 foto + dati.
          */
-        function compressImage(dataUrl, maxSizeKB = 700) {
+        function compressImage(dataUrl, maxSizeKB = 150) {
             return new Promise((resolve, reject) => {
                 const img = new Image();
                 img.src = dataUrl;
@@ -631,16 +628,17 @@
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
                     
-                    // Ridimensionamento intelligente: max 1920px larghezza/altezza mantenendo ratio
+                    // Ridimensionamento aggressivo per garantire il successo
+                    // Max dimensione 1280px (ottimo per mobile/web, leggero per DB)
                     let width = img.width;
                     let height = img.height;
-                    const MAX_DIM = 1920;
+                    const MAX_DIM = 1280;
 
                     if (width > height && width > MAX_DIM) {
-                        height *= MAX_DIM / width;
+                        height = Math.round(height * (MAX_DIM / width));
                         width = MAX_DIM;
                     } else if (height > MAX_DIM) {
-                        width *= MAX_DIM / height;
+                        width = Math.round(width * (MAX_DIM / height));
                         height = MAX_DIM;
                     }
 
@@ -649,26 +647,28 @@
                     ctx.drawImage(img, 0, 0, width, height);
 
                     // Compressione iterativa della qualità
-                    let quality = 0.8; // Inizia dall'80%
-                    const maxAttempts = 10;
+                    let quality = 0.7; // Inizia dal 70%
+                    const maxAttempts = 5;
                     let attempts = 0;
                     
                     const tryCompress = () => {
                         attempts++;
+                        // Usa 'image/jpeg' per la migliore compressione
                         const compressedData = canvas.toDataURL('image/jpeg', quality);
+                        
+                        // Calcolo dimensione approssimativa in KB
+                        // Base64 ha un overhead del ~33% rispetto ai byte raw
                         const sizeInKB = (compressedData.length - 'data:image/jpeg;base64,'.length) * 0.75 / 1024;
 
                         if (sizeInKB <= maxSizeKB || quality <= 0.1 || attempts >= maxAttempts) {
-                            // Se siamo ancora sopra il limite ma abbiamo finito i tentativi, accettiamo il risultato
-                            if (sizeInKB > maxSizeKB && attempts >= maxAttempts) {
-                                console.warn(`Immagine compressa al limite (${sizeInKB.toFixed(0)}KB). Qualità: ${quality.toFixed(2)}`);
+                            if (sizeInKB > maxSizeKB) {
+                                console.warn(`Immagine ancora grande (${sizeInKB.toFixed(0)}KB), ma tentativi esauriti. Procedo comunque.`);
                             }
                             resolve(compressedData);
                         } else {
                             // Riduci la qualità e riprova
-                            quality -= 0.1;
-                            // Uso setTimeout per evitare di bloccare l'UI durante il loop
-                            setTimeout(tryCompress, 10); 
+                            quality -= 0.15;
+                            setTimeout(tryCompress, 5); 
                         }
                     };
 
@@ -930,15 +930,44 @@
 
             const id = document.getElementById('vehicleId').value;
             
+            // Preparazione foto: mantieni quelle esistenti se non cambiate
+            let finalPhotos = {};
+            if (id) {
+                const existing = vehicles.find(v => v.id === id);
+                if (existing && existing.photos) finalPhotos = { ...existing.photos };
+            }
+
+            // Aggiorna solo le foto caricate (non null)
+            let hasNewPhotos = false;
+            Object.keys(tempPhotos).forEach(key => {
+                if (tempPhotos[key]) {
+                    finalPhotos[key] = tempPhotos[key];
+                    hasNewPhotos = true;
+                }
+            });
+
             const payload = {
                 targa: document.getElementById('targa').value.trim().toUpperCase(),
                 tipologia: document.getElementById('tipologia').value,
                 note: document.getElementById('note').value.trim(),
                 scadenzaAssicurazione: document.getElementById('scadenzaAssicurazione').value,
                 scadenzaRevisione: document.getElementById('scadenzaRevisione').value,
-                photos: tempPhotos, 
+                photos: finalPhotos,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             };
+
+            // Controllo sicurezza dimensioni documento (Limite Firestore 1MB)
+            // Stima approssimativa della dimensione del payload in bytes
+            const payloadStr = JSON.stringify(payload);
+            const sizeInBytes = new Blob([payloadStr]).size;
+            const sizeInMB = sizeInBytes / (1024 * 1024);
+
+            if (sizeInMB >= 0.95) { // Lasciamo un margine di sicurezza
+                showToast(`Documento troppo grande (${sizeInMB.toFixed(2)} MB). Rimuovi qualche foto.`, "error");
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                return;
+            }
 
             try {
                 if (id) {
@@ -953,9 +982,10 @@
                 closeVehicleModal();
             } catch (err) {
                 console.error("Errore Firebase:", err);
-                let errorMsg = "Errore generico.";
-                if (err.code === 'permission-denied') errorMsg = "Permesso negato.";
-                else if (err.message.includes("Value for argument")) errorMsg = "Dati non validi (probabile dimensione eccessiva).";
+                let errorMsg = "Errore di rete o permessi.";
+                if (err.code === 'permission-denied') errorMsg = "Permesso negato. Controlla le regole Firestore.";
+                else if (err.code === 'invalid-argument') errorMsg = "Dati non validi (probabile dimensione eccessiva).";
+                else if (err.message) errorMsg = err.message;
                 showToast("Salvataggio fallito: " + errorMsg, "error");
             } finally {
                 btn.innerHTML = originalText;
@@ -1140,14 +1170,13 @@
         async function handlePhotoUpload(e) {
             const file = e.target.files[0];
             if (file) {
-                showToast("Compressione immagine in corso...", "info");
+                showToast("Compressione immagine...", "info");
                 
-                // Leggi come DataURL
                 const reader = new FileReader();
                 reader.onload = async function(ev) {
                     try {
-                        // COMPRESS IMAGE
-                        const compressedData = await compressImage(ev.target.result, 700);
+                        // COMPRESS IMAGE con limiti più stringenti
+                        const compressedData = await compressImage(ev.target.result, 150); // Target 150KB
                         
                         tempPhotos[currentPhotoSide] = compressedData;
                         const s = currentPhotoSide.charAt(0).toUpperCase() + currentPhotoSide.slice(1);
@@ -1155,7 +1184,7 @@
                         document.getElementById(`photo${s}Img`).classList.remove('hidden');
                         document.getElementById(`photo${s}Placeholder`).classList.add('hidden');
                         
-                        showToast("Immagine caricata e compressa", "success");
+                        showToast("Foto pronta", "success");
                     } catch (err) {
                         console.error(err);
                         showToast("Errore durante la compressione", "error");
@@ -1171,13 +1200,12 @@
         async function handleInterventionPhotoUpload(e) {
             const file = e.target.files[0];
             if (file) {
-                showToast("Compressione immagine in corso...", "info");
+                showToast("Compressione immagine...", "info");
                 
                 const reader = new FileReader();
                 reader.onload = async function(ev) {
                     try {
-                        // COMPRESS IMAGE
-                        const compressedData = await compressImage(ev.target.result, 700);
+                        const compressedData = await compressImage(ev.target.result, 150);
                         
                         tempInterventionPhotos[currentInterventionPhotoSide] = compressedData;
                         const s = currentInterventionPhotoSide.charAt(0).toUpperCase() + currentInterventionPhotoSide.slice(1);
@@ -1187,7 +1215,7 @@
                         img.classList.remove('hidden');
                         ph.classList.add('hidden');
                         
-                        showToast("Immagine pronta", "success");
+                        showToast("Foto pronta", "success");
                     } catch (err) {
                         console.error(err);
                         showToast("Errore compressione", "error");
