@@ -247,6 +247,7 @@
         .row-suspended { border-left: 4px solid var(--warning); }
         .row-low-stock { border-left: 4px solid var(--danger); background: rgba(239, 68, 68, 0.03); }
         .negative-stock { color: var(--danger); font-weight: 700; }
+        .row-assigned { background: rgba(245, 158, 11, 0.1); border-left: 4px solid var(--warning); }
 
         /* SIGNATURE PAD */
         .sig-wrapper { 
@@ -262,31 +263,6 @@
         .sig-canvas { width: 100%; height: 100%; cursor: crosshair; }
         .sig-clear { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.7); color: white; padding: 6px 12px; font-size: 0.75rem; border-radius: 4px; cursor: pointer; border: 1px solid #000; transition: all 0.2s; }
         .sig-clear:hover { background: var(--danger); border-color: var(--danger); }
-
-        /* Communication Attachments */
-        .comm-attachment-preview {
-            margin-top: 10px;
-            padding: 10px;
-            background: var(--bg-body);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .comm-attachment-preview img {
-            width: 50px;
-            height: 50px;
-            object-fit: cover;
-            border-radius: 4px;
-            border: 1px solid var(--border-color);
-        }
-        .message-attachment-img {
-            max-width: 100%;
-            max-height: 300px;
-            border-radius: 8px;
-            margin-top: 10px;
-            border: 1px solid var(--border-color);
-        }
 
         /* TOAST & MODAL */
         #toast-container { position: fixed; top: 25px; right: 25px; z-index: 99999; display: flex; flex-direction: column; gap: 12px; }
@@ -391,48 +367,6 @@
             text-align: left;
             font-size: 0.9rem;
             color: var(--text-secondary);
-        }
-
-        /* --- STILI PER LE FOTO MACCHINA --- */
-        .machine-photos-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-top: 10px;
-        }
-        .machine-photo-item {
-            position: relative;
-            width: 100%;
-            padding-bottom: 75%; /* Aspect ratio 4:3 */
-            background-color: #0f172a;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            overflow: hidden;
-        }
-        .machine-photo-item img {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        .machine-photo-label {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(0,0,0,0.6);
-            color: white;
-            font-size: 0.7rem;
-            text-align: center;
-            padding: 2px;
-        }
-        .machine-photo-input {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            opacity: 0;
-            cursor: pointer;
         }
 
         /* --- STILI PER IFRAME ESTERNI --- */
@@ -652,7 +586,7 @@
         </div>
     </div>
 
-    <!-- LOGIN SCREEN -->
+        <!-- LOGIN SCREEN -->
     <div id="login-screen">
         <div class="login-card">
             <h2>Accesso Riservato</h2>
@@ -660,6 +594,16 @@
             <input type="password" id="login_pass" placeholder="Password">
             <button class="btn btn-primary btn-block" onclick="Auth.login()">Accedi</button>
             <p id="login-error" style="color:var(--danger); margin-top:15px; display:none; font-size:0.9rem;">Credenziali non valide</p>
+            
+            <!-- NUOVO BOTTONE TRACCIABILITÀ -->
+            <div style="margin-top: 30px; border-top: 1px solid var(--border-color); padding-top: 20px; text-align: center;">
+                <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 12px;">Sei un cliente?</p>
+                <button class="btn btn-outline btn-block" onclick="App.openTrackingFromLogin()">
+                    <i class="fas fa-truck-moving"></i> Traccia la mia Consegna
+                </button>
+            </div>
+            <!-- FINE BOTTONE TRACCIABILITÀ -->
+            
         </div>
     </div>
 
@@ -884,6 +828,53 @@
         </div>
     </div>
 
+    <!-- MODAL: DETTAGLIO COMMESSA ASSEGNATA -->
+    <div id="assignmentModal" class="modal-overlay">
+        <div class="modal" style="max-width: 550px;">
+            <div style="background: var(--warning); margin: -35px -35px 20px -35px; padding: 20px 35px; border-radius: var(--radius) var(--radius) 0 0;">
+                <h3 style="color: #1e293b; margin:0; text-align:left;"><i class="fas fa-clipboard-list me-2"></i>Commessa Assegnata</h3>
+            </div>
+            
+            <input type="hidden" id="assignment_id">
+            
+            <div style="text-align: left;">
+                <div style="margin-bottom: 15px;">
+                    <label style="font-size:0.8rem; color:var(--text-secondary);">Cliente</label>
+                    <h4 style="margin:0; color:var(--text-primary);" id="assign_client_name">-</h4>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <a id="assign_tel_link" href="#" style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px; padding:12px; background:rgba(16, 185, 129, 0.1); border-radius:8px; color:var(--success); text-decoration:none; font-weight:700;">
+                        <i class="fas fa-phone-alt"></i> <span id="assign_tel_text">Chiama</span>
+                    </a>
+                    <a id="assign_maps_link" href="#" target="_blank" style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px; padding:12px; background:rgba(14, 165, 233, 0.1); border-radius:8px; color:var(--primary); text-decoration:none; font-weight:700;">
+                        <i class="fas fa-directions"></i> Naviga
+                    </a>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="font-size:0.8rem; color:var(--text-secondary);">Indirizzo</label>
+                    <p style="margin:0; color:var(--text-primary);" id="assign_address">-</p>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="font-size:0.8rem; color:var(--text-secondary);">Tipo Intervento</label>
+                    <p style="margin:0; color:var(--primary); font-weight:700;" id="assign_type">-</p>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="font-size:0.8rem; color:var(--text-secondary);">Pagamento / Note Admin</label>
+                    <p style="margin:0; color:var(--text-primary); background:var(--bg-body); padding:10px; border-radius:6px;" id="assign_notes">-</p>
+                </div>
+            </div>
+
+            <div class="modal-actions row" style="margin-top: 25px;">
+                <button class="btn btn-success" onclick="App.acceptAssignment()"><i class="fas fa-play me-1"></i> Procedi con l'Intervento</button>
+                <button class="btn btn-outline" onclick="UI.closeModal('assignmentModal')">Chiudi</button>
+            </div>
+        </div>
+    </div>
+
     <!-- VIEW: DASHBOARD -->
     <div id="view-dashboard" class="view">
         <div class="container">
@@ -1094,17 +1085,6 @@
                 <div class="form-grid" style="margin-top: 25px; grid-template-columns: 1fr;">
                     <div class="form-group"><label>Destinatario</label><select id="msgRecipient" style="background: var(--bg-body);"><option value="all">📢 A Tutti (Bacheca Generale)</option></select></div>
                     <div class="form-group"><label>Nuovo Messaggio</label><textarea id="newMessageContent" rows="3" placeholder="Scrivi un avviso o comunicazione..."></textarea></div>
-                    
-                    <div class="form-group">
-                        <label>📎 Allega Foto o File</label>
-                        <input type="file" id="msgAttachment" accept="image/*" onchange="CommunicationManager.previewAttachment(event)">
-                        <div id="msgAttachmentPreview" class="comm-attachment-preview hidden">
-                            <img id="msgPreviewImg" src="" alt="Preview">
-                            <span style="font-size:0.9rem; color:var(--text-primary);" id="msgFileName">immagine.jpg</span>
-                            <button class="btn btn-sm btn-danger" onclick="CommunicationManager.clearAttachment()"><i class="fas fa-times"></i></button>
-                        </div>
-                    </div>
-
                 </div>
                 <div class="text-right" style="margin-top: 10px;"><button class="btn btn-primary" onclick="CommunicationManager.sendMessage()">Invia Messaggio</button></div>
             </div>
@@ -1139,17 +1119,41 @@
                         <legend>Anagrafica Cliente</legend>
                         <div class="form-grid">
                             <div class="form-group"><label>Nome / Ragione Sociale *</label><input type="text" id="c_nome" required placeholder="Es. Mario Rossi"></div>
-                            <div class="form-group"><label>Indirizzo *</label><input type="text" id="c_indirizzo" required placeholder="Via, numero, citta"></div>
+                            <div class="form-group">
+                                <label>Indirizzo *</label>
+                                <div style="position: relative;">
+                                    <input type="text" id="c_indirizzo" required placeholder="Via, numero, città">
+                                    <button type="button" class="btn btn-sm" onclick="App.openMaps()" style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); background: var(--primary); color: white; padding: 5px 10px; font-size: 0.8rem;">
+                                        <i class="fas fa-map-marker-alt"></i>
+                                    </button>
+                                </div>
+                            </div>
                             <div class="form-group">
                                 <label>Data Intervento *</label>
                                 <input type="text" id="c_intervention_date" readonly style="background: rgba(14, 165, 233, 0.1); border-color: var(--border-color); cursor: not-allowed; color: var(--primary); font-weight: 600;">
                             </div>
-                            <div class="form-group"><label>Telefono</label><input type="tel" id="c_tel" placeholder="333 1234567"></div>
+                            <div class="form-group">
+                                <label>Telefono</label>
+                                <div style="position: relative;">
+                                    <input type="tel" id="c_tel" placeholder="333 1234567">
+                                    <button type="button" class="btn btn-sm" onclick="App.callPhone()" style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); background: var(--success); color: white; padding: 5px 10px; font-size: 0.8rem;">
+                                        <i class="fas fa-phone"></i>
+                                    </button>
+                                </div>
+                            </div>
                             <div class="form-group"><label>Email</label><input type="email" id="c_email" placeholder="email@example.com"></div>
                             <div class="form-group"><label>C.F. / P.IVA</label><input type="text" id="c_fiscal"></div>
                             <div class="form-group"><label>Data Scontrino (Acquisto) *</label><input type="date" id="c_date" required></div>
                             <div class="form-group"><label>N. Scontrino/Fattura</label><input type="text" id="c_receipt_no" placeholder="Es. 123/ABC"></div>
                         </div>
+                        
+                        <!-- NUOVO PULSANTE ADMIN -->
+                        <div class="text-right mt-2 admin-only">
+                            <button type="button" class="btn btn-warning" onclick="Admin.openAssignmentModal()">
+                                <i class="fas fa-tasks"></i> Crea Commessa per Operatore
+                            </button>
+                        </div>
+
                         <div class="text-right mt-2"><button type="button" class="btn btn-primary" onclick="FormManager.nextStep(2)">Avanti</button></div>
                     </fieldset>
 
@@ -1202,7 +1206,7 @@
                             </div>
                         </div>
                         <div class="table-responsive mt-2">
-                            <table><thead><tr><th>Descrizione</th><th style="width:70px">Qta</th><th style="width:90px">Prezzo</th><th style="width:90px">Totale</th><th style="width:90px">Sede</th><th style="width:80px">Origine</th><th style="width:50px"></th></tr></thead><tbody id="materialsTableBody"></tbody></table>
+                            <table><thead><tr><th>Descrizione</th><th style="width:70px">Qta</th><th style="width:90px">Prezzo</th><th style="width:90px">Totale</th><th style="width:50px"></th></tr></thead><tbody id="materialsTableBody"></tbody></table>
                         </div>
                         <div class="text-right" style="font-size:1.3rem; font-weight:700; color:var(--success); margin-top:15px;">Totale: E <span id="materialsTotal">0.00</span></div>
                         <div class="flex-between mt-2">
@@ -1267,10 +1271,10 @@
                 </div>
                 <div class="category-filter" id="categoryFilter">
                     <button class="category-btn active" onclick="Warehouse.filterCategory('')">Tutti</button>
-                    <button class="category-btn" onclick="Warehouse.filterCategory('Tubazioni')">Tubazioni</option>
+                    <button class="category-btn" onclick="Warehouse.filterCategory('Tubazioni')">Tubazioni</button>
                     <button class="category-btn" onclick="Warehouse.filterCategory('Gas Refrigeranti')">Gas</button>
                     <button class="category-btn" onclick="Warehouse.filterCategory('Componenti Elettrici')">Elettrici</button>
-                    <button class="category-btn" onclick="Warehouse.filterCategory('Ricambi Climatizzatori')">Clima</button>
+                    <button class="category-btn" onclick="Warehouse.filterCategory('Ricambi Climatizzatori')">Clima</option>
                     <button class="category-btn" onclick="Warehouse.filterCategory('Ricambi Caldaie')">Caldaie</button>
                 </div>
                 <div class="flex-between mb-2">
@@ -1342,6 +1346,7 @@
 
         let db = null;
         let firebaseReady = false;
+        let isTrackingMode = false;
         
         try {
             firebase.initializeApp(firebaseConfig);
@@ -1383,6 +1388,12 @@
             },
             checkLocalSession: () => {
                 if (Auth.initComplete) return;
+                if (isTrackingMode) {
+                     Auth.initComplete = true;
+                     Utils.id('intro-screen').classList.add('hidden');
+                     return; 
+                }
+
                 const session = localStorage.getItem('session_gipro');
                 if (session) {
                     try {
@@ -1445,6 +1456,173 @@
             getDomicileTickets: () => Store.localDomicileTickets
         };
 
+        // ========== APP CONTROLLER ==========
+        const App = {
+            init: () => { FormManager.reset(); if (Auth.currentUser?.role === 'admin') { Admin.renderUsers(); Warehouse.render(); } CommunicationManager.updateNotificationBadge(); CallManager.init(); },
+            goToDashboard: () => UI.showView('view-dashboard'),
+            goToForm: (category) => { FormManager.reset(); FormManager.setCategory(category); FormManager.renderMachines(); UI.showView('view-form'); },
+            goToHistory: () => { HistoryManager.render(); UI.showView('view-history'); },
+            goToAdmin: () => { Admin.renderUsers(); Admin.renderLogs(); UI.showView('view-admin'); },
+            goToWarehouse: () => { Warehouse.render(); UI.showView('view-warehouse'); },
+            goToCommunication: () => { CommunicationManager.render(); UI.showView('view-communication'); },
+            goToDomicile: () => { DomicileManager.init(); DomicileManager.render(); UI.showView('view-domicile'); },
+            goToTimbratura: () => { window.open('https://gestionetimbrature.netlify.app/', '_blank'); },
+            
+            goToEquipment: () => { App.openExternalView('attrezzatura.html'); },
+            goToVehicles: () => { App.openExternalView('mezzi.html'); },
+            
+            openExternalView: (fileName) => {
+                UI.showView('view-external');
+                const iframe = Utils.id('mainExternalFrame');
+                iframe.src = fileName;
+                Utils.id('closeIframeBtn').classList.add('visible');
+            },
+
+            closeExternalView: () => {
+                Utils.id('mainExternalFrame').src = '';
+                Utils.id('closeIframeBtn').classList.remove('visible');
+                
+                if (isTrackingMode) {
+                    isTrackingMode = false;
+                    Utils.id('login-screen').classList.add('active');
+                } else {
+                    App.goToDashboard();
+                }
+            },
+            
+            openTrackingFromLogin: () => {
+                isTrackingMode = true;
+                Utils.id('login-screen').classList.remove('active');
+                UI.showView('view-external');
+                Utils.id('mainExternalFrame').src = 'tracciabilità.html';
+                Utils.id('closeIframeBtn').classList.add('visible');
+            },
+            
+            confirmExit: () => { UI.confirm('Uscita', 'I dati non salvati saranno persi. Continuare?', () => { App.goToDashboard(); }); },
+            promptStatus: () => { if (SignaturePad.isEmpty('sigTech')) { UI.showToast('Firma operatore obbligatoria', 'error'); return; } UI.openModal('statusModal'); },
+            
+            finalizeSave: (status) => {
+                UI.closeModal('statusModal'); 
+                const data = FormManager.collectData(); 
+                data.status = status;
+
+                const materialsToConsume = data.materials.filter(m => m.fromWarehouse);
+
+                materialsToConsume.forEach(m => {
+                    const updatedItem = Store.updateMaterialStock(m.fromWarehouse, m.qta);
+                    
+                    if (updatedItem) {
+                        Store.addMaterialHistory({
+                            operator: data.author,
+                            materialName: m.desc,
+                            quantityUsed: m.qta,
+                            clientName: data.client.nome,
+                            newStock: updatedItem.quantity, 
+                            time: new Date().toLocaleString('it-IT') 
+                        });
+                    } else {
+                        console.warn(`Materiale non trovato in magazzino: ${m.desc}`);
+                    }
+                });
+
+                Store.save(data); 
+                Store.addLog(`Intervento ${status} salvato per ${data.client.nome} da ${Auth.currentUser.username}`); 
+                PDF.generate(data);
+
+                if (Auth.currentUser?.role === 'admin') { 
+                    Warehouse.render(); 
+                } 
+                
+                setTimeout(() => App.goToDashboard(), 1500);
+            },
+            
+            loadEdit: (id) => {
+                const data = Store.getById(id); if (!data) return; UI.showView('view-form'); FormManager.reset(); FormManager.setCategory(data.category); Utils.id('editId').value = data.id;
+                Utils.id('c_nome').value = data.client.nome || ''; Utils.id('c_indirizzo').value = data.client.indirizzo || ''; Utils.id('c_intervention_date').value = data.client.dataIntervento || ''; 
+                Utils.id('c_date').value = data.client.date || Utils.today(); Utils.id('c_tel').value = data.client.tel || ''; Utils.id('c_email').value = data.client.email || ''; Utils.id('c_fiscal').value = data.client.fiscal || ''; Utils.id('c_receipt_no').value = data.client.receipt_no || '';
+                Utils.id('op_name').value = data.author || ''; Utils.id('i_tipo').value = data.intervention.tipo; Utils.id('i_note').value = data.intervention.note || '';
+                FormManager.toggleTypeFields();
+                setTimeout(() => { Object.entries(data.intervention.techData).forEach(([k, v]) => { const el = Utils.id(k); if (el) el.value = v; }); }, 100);
+                Utils.id('m_count').value = data.machines.length || 1; FormManager.renderMachines();
+                setTimeout(() => { 
+                    data.machines.forEach((m, i) => { 
+                        const idx = i + 1; 
+                        const setVal = (name, val) => { const el = document.querySelector(`[name="m_${idx}_${name}"]`); if (el) el.value = val || ''; }; 
+                        setVal('brand', m.brand); 
+                        setVal('model', m.model); 
+                        setVal('sn_int', m.sn_int); 
+                        setVal('sn_out', m.sn_out); 
+                        setVal('gas', m.gas); 
+                        setVal('gas_qty', m.gas_qty); 
+                        setVal('gwp', m.gwp);
+                        setVal('co2', m.co2);
+                        setVal('btu', m.btu); 
+                        setVal('room', m.room); 
+                        FormManager.calcEmissions(idx); 
+                    }); 
+                }, 100);
+                FormManager.materials = data.materials || []; FormManager.renderMaterials();
+            },
+            downloadPDF: (id) => { const data = Store.getById(id); if (data) PDF.generate(data); },
+            deleteItem: (id) => { UI.confirm('Eliminazione', 'Eliminare definitivamente questo intervento?', () => { Store.delete(id); Store.addLog(`Intervento eliminato da ${Auth.currentUser.username}`); UI.showToast('Intervento eliminato', 'info'); }); },
+
+            callPhone: () => {
+                const phone = Utils.id('c_tel').value;
+                if(phone) {
+                    window.open(`tel:${phone}`, '_self');
+                } else {
+                    UI.showToast('Inserisci un numero di telefono', 'warning');
+                }
+            },
+            openMaps: () => {
+                const address = Utils.id('c_indirizzo').value;
+                if(address) {
+                    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, '_blank');
+                } else {
+                    UI.showToast('Inserisci un indirizzo', 'warning');
+                }
+            },
+
+            openAssignmentDetails: (id) => {
+                const item = Store.getById(id);
+                if(!item) return;
+
+                Utils.id('assignment_id').value = id;
+                Utils.id('assign_client_name').innerText = item.client.nome;
+                Utils.id('assign_address').innerText = item.client.indirizzo || 'N/D';
+                
+                const telLink = Utils.id('assign_tel_link');
+                const telText = Utils.id('assign_tel_text');
+                if(item.client.tel) {
+                    telLink.href = `tel:${item.client.tel}`;
+                    telText.innerText = item.client.tel;
+                } else {
+                    telLink.href = '#';
+                    telText.innerText = 'N/D';
+                }
+
+                const mapsLink = Utils.id('assign_maps_link');
+                if(item.client.indirizzo) {
+                    mapsLink.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.client.indirizzo)}`;
+                } else {
+                    mapsLink.href = '#';
+                }
+
+                Utils.id('assign_type').innerText = item.intervention.tipo_label || 'N/D';
+                Utils.id('assign_notes').innerText = item.intervention.note || 'Nessuna nota';
+
+                UI.openModal('assignmentModal');
+            },
+            acceptAssignment: () => {
+                const id = Utils.id('assignment_id').value;
+                UI.closeModal('assignmentModal');
+                
+                App.loadEdit(id); 
+                
+                UI.showToast('Compila i dati tecnici e firma per chiudere la commessa', 'info');
+            }
+        };
+        
         // ========== CALL MANAGER ==========
         const CallManager = {
             currentTicketId: null,
@@ -1464,7 +1642,6 @@
                 const tbody = Utils.id('callClientTableBody');
                 if (!tbody) return;
                 const currentUser = Auth.currentUser.username;
-                // MODIFICA: Mostra solo i ticket dell'utente corrente
                 const tickets = Store.getDomicileTickets().filter(t => 
                     t.operator === currentUser && t.status !== 'completato' && t.status !== 'reclamo'
                 );
@@ -1486,9 +1663,9 @@
                             statusBadge = '<span class="badge badge-low">Da Chiamare</span>';
                             pending++;
                         }
-                                                tbody.innerHTML += `
+                        tbody.innerHTML += `
                             <tr>
-                                <td><strong>#${t.id.substring(0,5)}</strong></td>
+                                <td><strong>#${t.ticketId || t.id.substring(0,4)}</strong></td>
                                 <td>${t.clientName}</td>
                                 <td><a href="tel:${t.phone}" style="color:var(--primary);">${t.phone || '-'}</a></td>
                                 <td>${t.address}</td>
@@ -1507,7 +1684,7 @@
                 Utils.id('countConfirmed').innerText = confirmed;
                 Utils.id('countReschedule').innerText = reschedule;
             },
-                        openCallModal: (id) => {
+            openCallModal: (id) => {
                 const t = Store.getDomicileTickets().find(t => t.id === id);
                 if(!t) return;
                 CallManager.currentTicketId = id;
@@ -1570,7 +1747,7 @@
         const DomicileManager = {
             currentTicketId: null,
             currentStatusFilter: '',
-            draggedItem: null, // Per Drag & Drop
+            draggedItem: null,
             
             init: () => { 
                 if (Utils.id('overviewDate')) Utils.id('overviewDate').value = Utils.today(); 
@@ -1604,30 +1781,25 @@
                 const selectedDate = dateInput.value;
                 const allTickets = Store.getDomicileTickets();
                 
-                // MODIFICA: Filtra iniziale per data
                 let todayTickets = allTickets.filter(t => t.date === selectedDate);
 
-                // MODIFICA: Se l'utente NON è admin, filtra solo i suoi ticket
                 if (Auth.currentUser.role !== 'admin') {
                     todayTickets = todayTickets.filter(t => t.operator === Auth.currentUser.username);
                 }
                 
-                // Se non ci sono ticket
                 if (todayTickets.length === 0) {
                     container.innerHTML = `<div class="empty-overview">Nessuna consegna programmata per questa data.</div>`;
                     return;
                 }
 
-                // 2. Raggruppa e calcola statistiche per Operatore
                 const operatorStats = {};
 
                 todayTickets.forEach(t => {
                     const opName = t.operator || 'Non Assegnato';
                     if (!operatorStats[opName]) {
-                        operatorStats[opName] = { total: 0, done: 0, pending: 0, tickets: [], sortedTickets: [] };
+                        operatorStats[opName] = { total: 0, done: 0, pending: 0 };
                     }
                     operatorStats[opName].total++;
-                    operatorStats[opName].tickets.push(t);
                     if (t.status === 'completato') {
                         operatorStats[opName].done++;
                     } else {
@@ -1635,36 +1807,16 @@
                     }
                 });
 
-                // 3. Genera l'HTML per ogni operatore
                 container.innerHTML = '';
                 
                 Object.entries(operatorStats).forEach(([name, data]) => {
-                    // Ordina i ticket in base all'ordine salvato (orderIndex)
-                    // Se non c'è ordine, usa quello di default
-                    const sortedTickets = data.tickets.sort((a, b) => (a.orderIndex || 999) - (b.orderIndex || 999));
-                    
                     const progressPercent = data.total > 0 ? (data.done / data.total) * 100 : 0;
-                    
-                    // Trova il cliente corrente (il primo 'assegnato' nella lista ordinata)
-                    const currentTicket = sortedTickets.find(t => t.status !== 'completato');
-                    
-                    // Trova la posizione del cliente corrente
-                    let currentStep = 0;
-                    let foundCurrent = false;
-                    sortedTickets.forEach((t, index) => {
-                        if(t.status === 'completato') currentStep = index + 1; // Conta i completati
-                        else if(!foundCurrent) {
-                            // Questo è il primo non completato
-                            foundCurrent = true;
-                        }
-                    });
-
                     let statusColor = 'var(--secondary)';
                     if (progressPercent === 100) statusColor = 'var(--success)';
                     else if (progressPercent > 0) statusColor = 'var(--primary)';
 
                     const cardHtml = `
-                        <div class="operator-card" onclick="DomicileManager.filterByOperator('${name}')" style="cursor: pointer;">
+                        <div class="operator-card">
                             <div class="operator-card-header">
                                 <div class="operator-name">
                                     <div class="operator-avatar">${name.substring(0, 2).toUpperCase()}</div>
@@ -1693,34 +1845,10 @@
                             <div class="progress-container">
                                 <div class="progress-bar-fill" style="width: ${progressPercent}%"></div>
                             </div>
-
-                            ${currentTicket ? `
-                                <div class="next-stop">
-                                    <strong>📍 Consegna #${currentStep + 1} di ${data.total}</strong>
-                                    ${currentTicket.clientName}<br>
-                                    <small style="color:var(--text-secondary)">${currentTicket.address}</small>
-                                    <div style="margin-top: 5px; font-size: 0.8rem; color: var(--text-secondary);">
-                                        Mancano ${data.pending - 1} consegne dopo questa.
-                                    </div>
-                                </div>
-                            ` : `
-                                <div class="next-stop" style="border-color: var(--success); background: rgba(16, 185, 129, 0.05);">
-                                    <strong style="color: var(--success);">✅ Turno Concluso</strong>
-                                </div>
-                            `}
                         </div>
                     `;
                     container.innerHTML += cardHtml;
                 });
-            },
-
-            filterByOperator: (operatorName) => {
-                const filterSelect = Utils.id('filterDomicileOperator');
-                if (filterSelect) {
-                    filterSelect.value = operatorName;
-                }
-                DomicileManager.render();
-                UI.showToast(`Filtrato per operatore: ${operatorName}`, 'info');
             },
 
             filterStatus: (status) => {
@@ -1734,7 +1862,6 @@
                 DomicileManager.render();
             },
 
-            // FUNZIONI DRAG & DROP
             handleDragStart: (e) => {
                 DomicileManager.draggedItem = e.target;
                 e.target.classList.add('dragging');
@@ -1780,25 +1907,35 @@
                 document.querySelectorAll('.sortable-row.over').forEach(el => el.classList.remove('over'));
             },
 
-            saveOrder: () => {
+                        saveOrder: () => {
                 const rows = Utils.id('domicileTableBody').querySelectorAll('tr.sortable-row');
+                if (rows.length === 0) return;
+
+                // Utilizziamo un batch per scrivere tutto insieme
                 const batch = db.batch();
                 let count = 0;
 
                 rows.forEach((row, index) => {
                     const id = row.getAttribute('data-id');
+                    if (!id) return;
+                    
                     const ref = db.collection("domicile_tickets").doc(id);
-                    batch.update(ref, { orderIndex: index });
+                    
+                    // Creiamo un campo semplice: orderNumber (1, 2, 3...)
+                    batch.update(ref, { 
+                        orderNumber: index + 1,
+                        orderIndex: index // Manteniamo anche il vecchio per compatibilità
+                    });
                     count++;
                 });
 
                 batch.commit().then(() => {
                     UI.showToast(`Ordine salvato per ${count} consegne!`, 'success');
                     Store.addLog(`Ordine consegne aggiornato`);
-                    DomicileManager.renderDailyOverview(); // Aggiorna la vista operatore
+                    DomicileManager.renderDailyOverview();
                 }).catch(err => {
-                    console.error(err);
-                    UI.showToast('Errore salvataggio ordine', 'error');
+                    console.error("Errore batch:", err);
+                    UI.showToast('Errore critico salvataggio ordine', 'error');
                 });
             },
 
@@ -1806,30 +1943,20 @@
                 const tbody = Utils.id('domicileTableBody'); 
                 if (!tbody) return; 
                 const searchText = Utils.id('searchDomicile')?.value?.toLowerCase() || '';
-                // MODIFICA: Lettura filtro operatore (solo visibile per admin)
                 const operatorFilter = Utils.id('filterDomicileOperator')?.value || '';
                 const statusFilter = DomicileManager.currentStatusFilter;
                 const tickets = Store.getDomicileTickets(); 
                 tbody.innerHTML = ''; 
                 
                 let filteredTickets = tickets.filter(t => {
-                    // MODIFICA: Se non è admin, mostra solo i propri ticket
                     if (Auth.currentUser.role !== 'admin' && t.operator !== Auth.currentUser.username) return false;
                     
                     const matchSearch = !searchText || 
                         (t.clientName && t.clientName.toLowerCase().includes(searchText)) || 
-                        (t.address && t.address.toLowerCase().includes(searchText)) ||
-                        (t.product && t.product.toLowerCase().includes(searchText));
+                        (t.address && t.address.toLowerCase().includes(searchText));
                     const matchStatus = !statusFilter || t.status === statusFilter;
-                    const matchOperator = !operatorFilter || t.operator === operatorFilter; // Se non admin, operatorFilter è vuoto
+                    const matchOperator = !operatorFilter || t.operator === operatorFilter;
                     return matchSearch && matchStatus && matchOperator;
-                });
-
-                // Ordina per orderIndex (se presente)
-                filteredTickets.sort((a, b) => {
-                    const orderA = a.orderIndex !== undefined ? a.orderIndex : 999;
-                    const orderB = b.orderIndex !== undefined ? b.orderIndex : 999;
-                    return orderA - orderB;
                 });
 
                 if (filteredTickets.length === 0) { 
@@ -1849,8 +1976,7 @@
                             ? `<button class="btn btn-sm btn-warning" onclick="DomicileManager.openEditModal('${t.id}')" style="margin-left:5px;">Modifica</button><button class="btn btn-sm btn-danger" onclick="DomicileManager.deleteTicket('${t.id}')" style="margin-left:5px;">Elimina</button>` 
                             : '';
 
-                        // Indicatore numerico
-                        const stepIndicator = `<span class="step-indicator ${t.status === 'completato' ? 'done' : ''}">${index + 1}</span>`;
+                        const stepIndicator = `<span class="step-indicator">${index + 1}</span>`;
 
                         tbody.innerHTML += `
                         <tr class="sortable-row ${t.status === 'completato' ? 'row-closed' : ''}" 
@@ -1863,7 +1989,11 @@
                             ondragend="DomicileManager.handleDragEnd(event)">
                             <td><i class="fas fa-grip-vertical drag-handle"></i></td>
                             <td>${t.date}</td>
-                            <td>${stepIndicator} <strong>${t.clientName}</strong></td>
+                            <td>
+                                ${stepIndicator} 
+                                <span style="background: var(--primary); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; margin-right: 5px;">#${t.ticketId || t.id.substring(0, 4)}</span>
+                                <strong>${t.clientName}</strong>
+                            </td>
                             <td>${t.address}</td>
                             <td><span class="badge badge-domicile">${typeLabels[t.type]}</span></td>
                             <td>${t.operator}</td>
@@ -1875,19 +2005,245 @@
                 CallManager.render(); 
                 DomicileManager.renderDailyOverview(); 
             },
-            createTicket: () => { const data = { id: Utils.generateId(), clientName: Utils.id('dom_client_name').value, address: Utils.id('dom_address').value, phone: Utils.id('dom_phone').value, date: Utils.id('dom_date').value, type: Utils.id('dom_type').value, product: Utils.id('dom_product').value, payment: Utils.id('dom_payment').value, operator: Utils.id('dom_operator').value, status: 'assegnato', createdBy: Auth.currentUser.username, createdAt: new Date().toLocaleString('it-IT'), timeSlot: null, callStatus: null, callNotes: null, orderIndex: 999 }; if (!data.clientName || !data.address || !data.date || !data.operator) { UI.showToast('Compila i campi obbligatori (*)', 'error'); return; } if (db) { db.collection("domicile_tickets").doc(data.id).set(data).then(() => { UI.showToast('Ticket creato con successo', 'success'); Utils.id('dom_client_name').value = ''; Utils.id('dom_address').value = ''; Utils.id('dom_phone').value = ''; Utils.id('dom_product').value = ''; Utils.id('dom_payment').value = ''; Store.addLog(`Nuovo ticket domicilio creato per ${data.clientName} assegnato a ${data.operator}`); }).catch(err => { console.error(err); UI.showToast('Errore salvataggio ticket', 'error'); }); } },
-            openTicket: (id) => { const t = Store.getDomicileTickets().find(t => t.id === id); if (t) { DomicileManager.currentTicketId = id; Utils.id('domicileTicketDetails').innerHTML = `<p><strong>Cliente:</strong> ${t.clientName}</p><p><strong>Indirizzo:</strong> ${t.address}</p><p><strong>Telefono:</strong> ${t.phone || '-'}</p><p><strong>Tipo:</strong> ${t.type}</p><p><strong>Prodotto:</strong> ${t.product || '-'}</p><p><strong>Pagamento:</strong> ${t.payment || '-'}</p><hr style="border-color: var(--border-color)"><p style="font-size:0.8rem; color:var(--text-secondary);">Creato da: ${t.createdBy}</p>`; Utils.id('dom_notes').value = ''; Utils.id('dom_photo').value = ''; Utils.id('dom_photo_preview').style.display = 'none'; Utils.id('dom_photo_preview').src = ''; Utils.id('dom_privacy_check').checked = false; SignaturePad.clear('sigDomicile'); UI.openModal('domicileModal'); setTimeout(() => SignaturePad.init('sigDomicile'), 100); } },
-            previewPhoto: (event) => { const file = event.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = (e) => { const img = new Image(); img.src = e.target.result; img.onload = () => { const canvas = document.createElement('canvas'); const MAX_WIDTH = 800; const MAX_HEIGHT = 600; let width = img.width; let height = img.height; if (width > height) { if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } } else { if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; } } canvas.width = width; canvas.height = height; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height); const compressedSrc = canvas.toDataURL('image/jpeg', 0.7); const preview = Utils.id('dom_photo_preview'); preview.src = compressedSrc; preview.style.display = 'block'; }; }; reader.readAsDataURL(file); } },
-            finalizeTicket: (status) => { const privacyChecked = Utils.id('dom_privacy_check').checked; const signature = SignaturePad.getImage('sigDomicile'); const photoData = Utils.id('dom_photo_preview').src; const notes = Utils.id('dom_notes').value; if (!privacyChecked) { UI.showToast('Consenso Privacy obbligatorio', 'error'); return; } if (!signature) { UI.showToast('Firma cliente obbligatoria', 'error'); return; } const ticketId = DomicileManager.currentTicketId; if (!ticketId) { UI.showToast('Errore: ID Ticket non valido', 'error'); return; } const completionData = { status: status, completedAt: new Date().toLocaleString('it-IT'), completedBy: Auth.currentUser.username, signature: signature, photo: photoData && !photoData.endsWith('undefined') ? photoData : null, privacyAccepted: true, notes: notes }; db.collection("domicile_tickets").doc(ticketId).update(completionData).then(() => { UI.showToast(`Ticket ${status === 'reclamo' ? 'segnalato' : 'completato'}!`, 'success'); if (status === 'reclamo') { const originalTicket = Store.getDomicileTickets().find(t => t.id === ticketId); const msg = { content: `⚠️ RECLAMO segnalato da ${Auth.currentUser.username} per il ticket di ${originalTicket?.clientName || 'N.D.'}. Motivo: ${notes || 'Non specificato'}`, author: Auth.currentUser.username, recipient: 'admin', time: new Date().toLocaleString('it-IT'), timestamp: firebase.firestore.FieldValue.serverTimestamp(), read: false }; Store.saveMessage(msg); Store.addLog(`Reclamo inviato per ticket ${ticketId}`); } const originalTicket = Store.getDomicileTickets().find(t => t.id === ticketId); if(originalTicket) { const fullData = {...originalTicket, ...completionData}; DomicilePDF.generate(fullData); } UI.closeModal('domicileModal'); }).catch(err => { console.error("Errore Firestore:", err); UI.showToast('Errore salvataggio: ' + err.message, 'error'); }); },
+            
+            createTicket: () => {
+                const clientName = Utils.id('dom_client_name').value;
+                const address = Utils.id('dom_address').value;
+                const date = Utils.id('dom_date').value;
+                const operator = Utils.id('dom_operator').value;
+
+                if (!clientName || !address || !date || !operator) {
+                    UI.showToast('Compila i campi obbligatori (*)', 'error');
+                    return;
+                }
+
+                const counterRef = db.collection("counters").doc("domicileTickets");
+
+                db.runTransaction((transaction) => {
+                    return transaction.get(counterRef).then((counterDoc) => {
+                        let currentNumber = 0;
+                        if (counterDoc.exists) {
+                            currentNumber = counterDoc.data().value || 0;
+                        }
+                        
+                        const newNumber = currentNumber + 1;
+                        const readableId = String(newNumber).padStart(4, '0');
+
+                        const data = {
+                            id: Utils.generateId(),
+                            ticketId: readableId,
+                            clientName: clientName,
+                            address: Utils.id('dom_address').value,
+                            phone: Utils.id('dom_phone').value,
+                            date: date,
+                            type: Utils.id('dom_type').value,
+                            product: Utils.id('dom_product').value,
+                            payment: Utils.id('dom_payment').value,
+                            operator: operator,
+                            status: 'assegnato',
+                            createdBy: Auth.currentUser.username,
+                            createdAt: new Date().toLocaleString('it-IT'),
+                            timeSlot: null,
+                            callStatus: null,
+                            callNotes: null,
+                            orderIndex: 999
+                        };
+
+                        transaction.set(counterRef, { value: newNumber });
+                        
+                        const ticketRef = db.collection("domicile_tickets").doc(data.id);
+                        transaction.set(ticketRef, data);
+
+                        return readableId;
+                    });
+                }).then((generatedId) => {
+                    UI.showToast(`Ticket #${generatedId} creato con successo!`, 'success');
+                    
+                    Utils.id('dom_client_name').value = '';
+                    Utils.id('dom_address').value = '';
+                    Utils.id('dom_phone').value = '';
+                    Utils.id('dom_product').value = '';
+                    Utils.id('dom_payment').value = '';
+                    
+                    Store.addLog(`Nuovo ticket domicilio #${generatedId} creato per ${clientName} assegnato a ${operator}`);
+                }).catch((err) => {
+                    console.error(err);
+                    UI.showToast('Errore durante la creazione del ticket', 'error');
+                });
+            },
+
+            openTicket: (id) => { 
+                const t = Store.getDomicileTickets().find(t => t.id === id); 
+                if (t) { 
+                    DomicileManager.currentTicketId = id; 
+                    Utils.id('domicileTicketDetails').innerHTML = `<p><strong>Cliente:</strong> ${t.clientName}</p><p><strong>Indirizzo:</strong> ${t.address}</p><p><strong>Telefono:</strong> ${t.phone || '-'}</p><p><strong>Tipo:</strong> ${t.type}</p><p><strong>Prodotto:</strong> ${t.product || '-'}</p><p><strong>Pagamento:</strong> ${t.payment || '-'}</p><hr style="border-color: var(--border-color)"><p style="font-size:0.8rem; color:var(--text-secondary);">Creato da: ${t.createdBy}</p>`; 
+                    Utils.id('dom_notes').value = ''; 
+                    Utils.id('dom_photo').value = ''; 
+                    Utils.id('dom_photo_preview').style.display = 'none'; 
+                    Utils.id('dom_photo_preview').src = ''; 
+                    Utils.id('dom_privacy_check').checked = false; 
+                    SignaturePad.clear('sigDomicile'); 
+                    UI.openModal('domicileModal'); 
+                    setTimeout(() => SignaturePad.init('sigDomicile'), 100); 
+                } 
+            },
+            previewPhoto: (event) => { 
+                const file = event.target.files[0]; 
+                if (file) { 
+                    const reader = new FileReader(); 
+                    reader.onload = (e) => { 
+                        const img = new Image(); 
+                        img.src = e.target.result; 
+                        img.onload = () => { 
+                            const canvas = document.createElement('canvas'); 
+                            const MAX_WIDTH = 800; 
+                            const MAX_HEIGHT = 600; 
+                            let width = img.width; 
+                            let height = img.height; 
+                            if (width > height) { 
+                                if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } 
+                            } else { 
+                                if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; } 
+                            } 
+                            canvas.width = width; 
+                            canvas.height = height; 
+                            const ctx = canvas.getContext('2d'); 
+                            ctx.drawImage(img, 0, 0, width, height); 
+                            const compressedSrc = canvas.toDataURL('image/jpeg', 0.7); 
+                            const preview = Utils.id('dom_photo_preview'); 
+                            preview.src = compressedSrc; 
+                            preview.style.display = 'block'; 
+                        }; 
+                    }; 
+                    reader.readAsDataURL(file); 
+                } 
+            },
+            finalizeTicket: (status) => { 
+                const privacyChecked = Utils.id('dom_privacy_check').checked; 
+                const signature = SignaturePad.getImage('sigDomicile'); 
+                const photoData = Utils.id('dom_photo_preview').src; 
+                const notes = Utils.id('dom_notes').value; 
+                if (!privacyChecked) { UI.showToast('Consenso Privacy obbligatorio', 'error'); return; } 
+                if (!signature) { UI.showToast('Firma cliente obbligatoria', 'error'); return; } 
+                const ticketId = DomicileManager.currentTicketId; 
+                if (!ticketId) { UI.showToast('Errore: ID Ticket non valido', 'error'); return; } 
+                const completionData = { status: status, completedAt: new Date().toLocaleString('it-IT'), completedBy: Auth.currentUser.username, signature: signature, photo: photoData && !photoData.endsWith('undefined') ? photoData : null, privacyAccepted: true, notes: notes }; 
+                db.collection("domicile_tickets").doc(ticketId).update(completionData).then(() => { 
+                    UI.showToast(`Ticket ${status === 'reclamo' ? 'segnalato' : 'completato'}!`, 'success'); 
+                    if (status === 'reclamo') { 
+                        const originalTicket = Store.getDomicileTickets().find(t => t.id === ticketId); 
+                        const msg = { content: `⚠️ RECLAMO segnalato da ${Auth.currentUser.username} per il ticket di ${originalTicket?.clientName || 'N.D.'}. Motivo: ${notes || 'Non specificato'}`, author: Auth.currentUser.username, recipient: 'admin', time: new Date().toLocaleString('it-IT'), timestamp: firebase.firestore.FieldValue.serverTimestamp(), read: false }; 
+                        Store.saveMessage(msg); 
+                        Store.addLog(`Reclamo inviato per ticket ${ticketId}`); 
+                    } 
+                    const originalTicket = Store.getDomicileTickets().find(t => t.id === ticketId); 
+                    if(originalTicket) { 
+                        const fullData = {...originalTicket, ...completionData}; 
+                        DomicilePDF.generate(fullData); 
+                    } 
+                    UI.closeModal('domicileModal'); 
+                }).catch(err => { console.error("Errore Firestore:", err); UI.showToast('Errore salvataggio: ' + err.message, 'error'); }); 
+            },
             viewPdf: (id) => { const t = Store.getDomicileTickets().find(t => t.id === id); if(t) DomicilePDF.generate(t); },
-            openEditModal: (id) => { const t = Store.getDomicileTickets().find(t => t.id === id); if (!t) { UI.showToast('Ticket non trovato', 'error'); return; } Utils.id('edit_dom_id').value = t.id; Utils.id('edit_dom_client_name').value = t.clientName || ''; Utils.id('edit_dom_address').value = t.address || ''; Utils.id('edit_dom_phone').value = t.phone || ''; Utils.id('edit_dom_date').value = t.date || ''; Utils.id('edit_dom_type').value = t.type || 'consegna'; Utils.id('edit_dom_product').value = t.product || ''; Utils.id('edit_dom_payment').value = t.payment || ''; Utils.id('edit_dom_status').value = t.status || 'assegnato'; const selectOp = Utils.id('edit_dom_operator'); selectOp.innerHTML = ''; if (t.operator) { selectOp.innerHTML += `<option value="${t.operator}" selected>${t.operator}</option>`; } const users = Store.getUsers(); users.forEach(u => { if(u.username !== 'admin' && u.username !== t.operator) { selectOp.innerHTML += `<option value="${u.username}">${u.username}</option>`; } }); UI.openModal('domicileEditModal'); },
-            saveEditTicket: () => { const id = Utils.id('edit_dom_id').value; if (!id) return; const updatedData = { clientName: Utils.id('edit_dom_client_name').value, address: Utils.id('edit_dom_address').value, phone: Utils.id('edit_dom_phone').value, date: Utils.id('edit_dom_date').value, type: Utils.id('edit_dom_type').value, product: Utils.id('edit_dom_product').value, payment: Utils.id('edit_dom_payment').value, operator: Utils.id('edit_dom_operator').value, status: Utils.id('edit_dom_status').value }; if (db) { db.collection("domicile_tickets").doc(id).update(updatedData).then(() => { UI.showToast('Ticket aggiornato', 'success'); Store.addLog(`Admin ha modificato il ticket domicilio ${id}`); UI.closeModal('domicileEditModal'); }).catch(err => { console.error(err); UI.showToast('Errore aggiornamento', 'error'); }); } },
+            openEditModal: (id) => { 
+                const t = Store.getDomicileTickets().find(t => t.id === id); 
+                if (!t) { UI.showToast('Ticket non trovato', 'error'); return; } 
+                Utils.id('edit_dom_id').value = t.id; 
+                Utils.id('edit_dom_client_name').value = t.clientName || ''; 
+                Utils.id('edit_dom_address').value = t.address || ''; 
+                Utils.id('edit_dom_phone').value = t.phone || ''; 
+                Utils.id('edit_dom_date').value = t.date || ''; 
+                Utils.id('edit_dom_type').value = t.type || 'consegna'; 
+                Utils.id('edit_dom_product').value = t.product || ''; 
+                Utils.id('edit_dom_payment').value = t.payment || ''; 
+                Utils.id('edit_dom_status').value = t.status || 'assegnato'; 
+                const selectOp = Utils.id('edit_dom_operator'); 
+                selectOp.innerHTML = ''; 
+                if (t.operator) { selectOp.innerHTML += `<option value="${t.operator}" selected>${t.operator}</option>`; } 
+                const users = Store.getUsers(); 
+                users.forEach(u => { if(u.username !== 'admin' && u.username !== t.operator) { selectOp.innerHTML += `<option value="${u.username}">${u.username}</option>`; } }); 
+                UI.openModal('domicileEditModal'); 
+            },
+            saveEditTicket: () => { 
+                const id = Utils.id('edit_dom_id').value; 
+                if (!id) return; 
+                const updatedData = { clientName: Utils.id('edit_dom_client_name').value, address: Utils.id('edit_dom_address').value, phone: Utils.id('edit_dom_phone').value, date: Utils.id('edit_dom_date').value, type: Utils.id('edit_dom_type').value, product: Utils.id('edit_dom_product').value, payment: Utils.id('edit_dom_payment').value, operator: Utils.id('edit_dom_operator').value, status: Utils.id('edit_dom_status').value }; 
+                if (db) { 
+                    db.collection("domicile_tickets").doc(id).update(updatedData).then(() => { 
+                        UI.showToast('Ticket aggiornato', 'success'); 
+                        Store.addLog(`Admin ha modificato il ticket domicilio ${id}`); 
+                        UI.closeModal('domicileEditModal'); 
+                    }).catch(err => { console.error(err); UI.showToast('Errore aggiornamento', 'error'); }); 
+                } 
+            },
             deleteTicket: (id) => { UI.confirm('Elimina Ticket', 'Sei sicuro di voler eliminare questo ticket?', () => { if (db) { db.collection("domicile_tickets").doc(id).delete().then(() => { UI.showToast('Ticket eliminato', 'info'); Store.addLog(`Admin ha eliminato il ticket domicilio ${id}`); }).catch(err => { console.error(err); UI.showToast('Errore eliminazione', 'error'); }); } }); }
         };
 
         // ========== DOMICILE PDF GENERATOR ==========
         const DomicilePDF = {
-            generate: (data) => { const { jsPDF } = window.jspdf; const doc = new jsPDF(); const left = 14; let y = 20; const pageWidth = doc.internal.pageSize.getWidth(); const headerColor = data.status === 'reclamo' ? [239, 68, 68] : [245, 158, 11]; doc.setFillColor(...headerColor); doc.rect(0, 0, pageWidth, 40, 'F'); doc.setTextColor(255); doc.setFontSize(22); doc.setFont('helvetica', 'bold'); doc.text(`RAPPORTO DOMICILIO ${data.status === 'reclamo' ? '- RECLAMO' : ''}`, left, 25); doc.setFontSize(10); doc.text(`Data: ${data.date}`, left, 35); y = 50; doc.setTextColor(30, 41, 59); doc.setFont('helvetica', 'bold'); doc.text('Cliente:', left, y); doc.setFont('helvetica', 'normal'); doc.text(Utils.sanitize(data.clientName), left + 30, y); y += 8; doc.text('Indirizzo:', left, y); doc.text(Utils.sanitize(data.address), left + 30, y); y += 8; if(data.phone) { doc.text('Telefono:', left, y); doc.text(data.phone, left + 30, y); y += 8; } doc.text('Tipologia:', left, y); doc.text(data.type, left + 30, y); y += 8; if(data.product) { doc.text('Prodotto:', left, y); doc.text(Utils.sanitize(data.product), left + 30, y); y += 8; } if(data.payment) { doc.text('Pagamento:', left, y); doc.text(Utils.sanitize(data.payment), left + 30, y); y += 8; } y += 5; doc.setDrawColor(200); doc.line(left, y, pageWidth - left, y); y += 10; if(data.notes) { doc.setFont('helvetica', 'bold'); doc.text('Note Operatore:', left, y); y += 5; doc.setFont('helvetica', 'normal'); doc.setFontSize(10); const splitNotes = doc.splitTextToSize(Utils.sanitize(data.notes), pageWidth - (left * 2)); doc.text(splitNotes, left, y); y += (splitNotes.length * 5) + 5; doc.setFontSize(12); } y += 5; doc.setDrawColor(200); doc.line(left, y, pageWidth - left, y); y += 10; doc.setFontSize(9); doc.setTextColor(100); doc.text('Il cliente dichiara di aver preso visione dell\'informativa sulla privacy e acconsente', left, y); y += 5; doc.text('al trattamento dei dati per le finalità connesse all\'esecuzione del servizio.', left, y); y += 10; doc.setFontSize(12); doc.setTextColor(30, 41, 59); doc.text('Firma Cliente:', left, y); if (data.signature) { try { doc.addImage(data.signature, 'PNG', left, y + 5, 80, 40); } catch(e) { console.error(e); } } y += 55; if (data.photo) { if (y > 200) { doc.addPage(); y = 20; } doc.text('Foto Allegata:', left, y); try { doc.addImage(data.photo, 'JPEG', left, y + 5, 100, 75); } catch(e) { console.error(e); } } doc.save(`Domicilio_${Utils.sanitize(data.clientName).replace(/\s+/g, '_')}.pdf`); UI.showToast('PDF scaricato', 'success'); }
+            generate: (data) => { 
+                const { jsPDF } = window.jspdf; 
+                const doc = new jsPDF(); 
+                const left = 14; 
+                let y = 20; 
+                const pageWidth = doc.internal.pageSize.getWidth(); 
+                const headerColor = data.status === 'reclamo' ? [239, 68, 68] : [245, 158, 11]; 
+                doc.setFillColor(...headerColor); 
+                doc.rect(0, 0, pageWidth, 40, 'F'); 
+                doc.setTextColor(255); 
+                doc.setFontSize(22); 
+                doc.setFont('helvetica', 'bold'); 
+                doc.text(`RAPPORTO DOMICILIO ${data.status === 'reclamo' ? '- RECLAMO' : ''}`, left, 25); 
+                doc.setFontSize(10); 
+                doc.text(`Data: ${data.date}`, left, 35); 
+                y = 50; 
+                doc.setTextColor(30, 41, 59); 
+                doc.setFont('helvetica', 'bold'); 
+                doc.text('Cliente:', left, y); 
+                doc.setFont('helvetica', 'normal'); 
+                doc.text(Utils.sanitize(data.clientName), left + 30, y); 
+                y += 8; 
+                doc.text('Indirizzo:', left, y); 
+                doc.text(Utils.sanitize(data.address), left + 30, y); 
+                y += 8; 
+                if(data.phone) { doc.text('Telefono:', left, y); doc.text(data.phone, left + 30, y); y += 8; } 
+                doc.text('Tipologia:', left, y); doc.text(data.type, left + 30, y); y += 8; 
+                if(data.product) { doc.text('Prodotto:', left, y); doc.text(Utils.sanitize(data.product), left + 30, y); y += 8; } 
+                if(data.payment) { doc.text('Pagamento:', left, y); doc.text(Utils.sanitize(data.payment), left + 30, y); y += 8; } 
+                y += 5; 
+                doc.setDrawColor(200); 
+                doc.line(left, y, pageWidth - left, y); 
+                y += 10; 
+                if(data.notes) { 
+                    doc.setFont('helvetica', 'bold'); 
+                    doc.text('Note Operatore:', left, y); 
+                    y += 5; 
+                    doc.setFont('helvetica', 'normal'); 
+                    doc.setFontSize(10); 
+                    const splitNotes = doc.splitTextToSize(Utils.sanitize(data.notes), pageWidth - (left * 2)); 
+                    doc.text(splitNotes, left, y); 
+                    y += (splitNotes.length * 5) + 5; 
+                    doc.setFontSize(12); 
+                } 
+                y += 5; 
+                doc.setDrawColor(200); 
+                doc.line(left, y, pageWidth - left, y); 
+                y += 10; 
+                doc.setFontSize(9); 
+                doc.setTextColor(100); 
+                doc.text('Il cliente dichiara di aver preso visione dell\'informativa sulla privacy e acconsente', left, y); 
+                y += 5; 
+                doc.text('al trattamento dei dati per le finalità connesse all\'esecuzione del servizio.', left, y); 
+                y += 10; 
+                doc.setFontSize(12); 
+                doc.setTextColor(30, 41, 59); 
+                doc.text('Firma Cliente:', left, y); 
+                if (data.signature) { try { doc.addImage(data.signature, 'PNG', left, y + 5, 80, 40); } catch(e) { console.error(e); } } 
+                y += 55; 
+                if (data.photo) { if (y > 200) { doc.addPage(); y = 20; } doc.text('Foto Allegata:', left, y); try { doc.addImage(data.photo, 'JPEG', left, y + 5, 100, 75); } catch(e) { console.error(e); } } 
+                doc.save(`Domicilio_${Utils.sanitize(data.clientName).replace(/\s+/g, '_')}.pdf`); 
+                UI.showToast('PDF scaricato', 'success'); 
+            }
         };
 
         // ========== COMMUNICATION MANAGER ==========
@@ -1940,7 +2296,7 @@
             delete: (id) => { UI.confirm('Elimina Messaggio', 'Vuoi eliminare questo messaggio?', () => { Store.deleteMessage(id); UI.showToast('Messaggio eliminato', 'info'); }); }
         };
 
-                // ========== WAREHOUSE MANAGER ==========
+        // ========== WAREHOUSE MANAGER ==========
         const Warehouse = {
             currentFilter: '',
             currentLocationFilter: '', 
@@ -2032,7 +2388,7 @@
                     UI.showToast('Nome, categoria e sede sono obbligatori', 'error'); 
                     return; 
                 } 
-                const data = { name, quantity, category, price, minStock, location }; 
+                const data = { name , quantity, category, price, minStock, location }; 
                 if (id) { 
                     db.collection("warehouse").doc(id).update(data); 
                     Store.addLog(`Materiale modificato: ${name}`); 
@@ -2053,7 +2409,7 @@
                 reader.onload = (e) => { 
                     try { 
                         const json = JSON.parse(e.target.result); 
-                        if (Array.isArray(json)) {                        UI.confirm('Importa Magazzino', `Sostituire il magazzino attuale con ${json.length} articoli?`, () => { 
+                        if (Array.isArray(json)) { UI.confirm('Importa Magazzino', `Sostituire il magazzino attuale con ${json.length} articoli?`, () => { 
                             const batch = db.batch(); 
                             json.forEach(item => { 
                                 const ref = db.collection("warehouse").doc(item.id || Utils.generateId()); 
@@ -2080,8 +2436,131 @@
         renderUsers: () => { const tbody = Utils.id('adminUsersBody'); if (!tbody) return; tbody.innerHTML = ''; Store.getUsers().forEach(u => { const isMe = Auth.currentUser?.id === u.id; tbody.innerHTML += `<tr><td>${u.username} ${isMe ? '<small>(tu)</small>' : ''}</td><td><span class="badge ${u.username === 'admin' ? 'badge-admin' : 'badge-cold'}">${u.role}</span></td><td><button class="btn btn-sm btn-warning" onclick="Admin.openUserModal('${u.id}')" ${isMe ? 'disabled' : ''}>Modifica</button></td></tr>`; }); },
         renderLogs: () => { const logContainer = Utils.id('activityLog'); if (logContainer) { logContainer.innerHTML = Store.localLogs.map(l => `<div class="log-entry"><span class="log-time">[${l.time}]</span>${l.msg}</div>`).join(''); } },
         openUserModal: (id = null) => { Utils.id('editUserId').value = id || ''; Utils.id('editUserUsername').value = ''; Utils.id('editUserPass').value = ''; Utils.id('editUserRole').value = 'user'; Utils.id('userModalTitle').innerText = id ? 'Modifica Utente' : 'Nuovo Utente'; if (id) { const u = Store.getUsers().find(x => x.id === id); if (u) { Utils.id('editUserUsername').value = u.username; Utils.id('editUserRole').value = u.role; } } UI.openModal('userModal'); },
-        saveUser: () => { const id = Utils.id('editUserId').value; const username = Utils.id('editUserUsername').value.trim(); const pass = Utils.id('editUserPass').value; const role = Utils.id('editUserRole').value; if (!username) { UI.showToast('Username obbligatorio', 'error'); return; } if (id) { const data = { username, role }; if (pass) data.password = pass; db.collection("users").doc(id).update(data); Store.addLog(`Admin ha modificato l'utente ${username}`); } else { if (!pass) { UI.showToast('Password obbligatoria', 'error'); return; } const newId = Utils.generateId(); db.collection("users").doc(newId).set({ id: newId, username, password: pass, role }); Store.addLog(`Admin ha creato l'utente ${username}`); } UI.closeModal('userModal'); UI.showToast('Utente salvato', 'success'); },
-        exportAllData: () => { const backup = { interventions: Store.localInterventions, warehouse: Store.localWarehouse, users: Store.localUsers, logs: Store.localLogs, materialHistory: Store.localMaterialHistory, messages: Store.localMessages, domicileTickets: Store.localDomicileTickets, exportDate: new Date().toISOString() }; const blob = new Blob([JSON.stringify(backup, null, 2)], {type: 'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `backup_completo_gipro_${new Date().toISOString().split('T')[0]}.json`; a.click(); URL.revokeObjectURL(url); UI.showToast('Backup completato', 'success'); }
+                saveUser: () => { 
+            const id = Utils.id('editUserId').value; 
+            const username = Utils.id('editUserUsername').value.trim(); 
+            let pass = Utils.id('editUserPass').value; // Leggiamo il valore
+            const role = Utils.id('editUserRole').value; 
+            
+            if (!username) { UI.showToast('Username obbligatorio', 'error'); return; } 
+            
+            if (id) { 
+                // MODIFICA UTENTE ESISTENTE
+                const data = { username, role }; 
+                if (pass) data.password = pass; // Aggiorna password solo se inserita
+                db.collection("users").doc(id).update(data); 
+                Store.addLog(`Admin ha modificato l'utente ${username}`); 
+                UI.showToast('Utente modificato!', 'success');
+            } else { 
+                // NUOVO UTENTE
+                if (!pass) { 
+                    UI.showToast('Password obbligatoria per nuovi utenti', 'error'); 
+                    return; 
+                } 
+                const newId = Utils.generateId(); 
+                db.collection("users").doc(newId).set({ id: newId, username, password: pass, role }); 
+                Store.addLog(`Admin ha creato l'utente ${username}`); 
+                UI.showToast('Nuovo utente creato!', 'success');
+            } 
+            UI.closeModal('userModal'); 
+        },
+        exportAllData: () => { const backup = { interventions: Store.localInterventions, warehouse: Store.localWarehouse, users: Store.localUsers, logs: Store.localLogs, materialHistory: Store.localMaterialHistory, messages: Store.localMessages, domicileTickets: Store.localDomicileTickets, exportDate: new Date().toISOString() }; const blob = new Blob([JSON.stringify(backup, null, 2)], {type: 'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `backup_completo_gipro_${new Date().toISOString().split('T')[0]}.json`; a.click(); URL.revokeObjectURL(url); UI.showToast('Backup completato', 'success'); },
+
+        // --- FUNZIONI COMMESSA (ASSEGNAZIONE) ---
+        openAssignmentModal: () => {
+            const currentName = Utils.id('c_nome').value;
+            const currentAddress = Utils.id('c_indirizzo').value;
+            const currentPhone = Utils.id('c_tel').value;
+
+            const users = Store.getUsers().filter(u => u.role !== 'admin');
+            if(users.length === 0) {
+                UI.showToast('Nessun operatore disponibile', 'error');
+                return;
+            }
+
+            const modalContent = `
+                <div class="modal-overlay" id="createCommessaModal" style="display:flex; z-index: 100001;">
+                    <div class="modal">
+                        <h3 style="color:var(--warning); margin-top:0;">Crea Commessa Operatore</h3>
+                        <p style="font-size:0.9rem; color:var(--text-secondary);">I dati attuali del cliente verranno usati per la commessa.</p>
+                        
+                        <div class="form-group"><label>Cliente</label><input type="text" id="comm_client" value="${currentName}"></div>
+                        <div class="form-group"><label>Indirizzo</label><input type="text" id="comm_address" value="${currentAddress}"></div>
+                        <div class="form-group"><label>Telefono</label><input type="text" id="comm_phone" value="${currentPhone}"></div>
+                        <div class="form-group">
+                            <label>Assegna a Operatore *</label>
+                            <select id="comm_operator">
+                                ${users.map(u => `<option value="${u.username}">${u.username}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Tipo Intervento</label>
+                            <select id="comm_type">
+                                <option>Installazione</option>
+                                <option>Riparazione</option>
+                                <option>Manutenzione</option>
+                                <option>Sopralluogo</option>
+                            </select>
+                        </div>
+                        <div class="form-group"><label>Note / Pagamento</label><textarea id="comm_notes" rows="3" placeholder="Es. Pagamento in contanti, dettagli extra..."></textarea></div>
+
+                        <div class="modal-actions row">
+                            <button class="btn btn-outline" onclick="Utils.id('createCommessaModal').remove()">Annulla</button>
+                            <button class="btn btn-warning" onclick="Admin.saveCommessa()">Crea Commessa</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const old = Utils.id('createCommessaModal');
+            if(old) old.remove();
+            
+            document.body.insertAdjacentHTML('beforeend', modalContent);
+        },
+
+        saveCommessa: () => {
+            const client = Utils.id('comm_client').value;
+            const address = Utils.id('comm_address').value;
+            const phone = Utils.id('comm_phone').value;
+            const operator = Utils.id('comm_operator').value;
+            const type = Utils.id('comm_type').value;
+            const notes = Utils.id('comm_notes').value;
+
+            if(!client || !operator) {
+                UI.showToast('Cliente e Operatore sono obbligatori', 'error');
+                return;
+            }
+
+            const data = {
+                id: Utils.generateId(),
+                status: 'assegnato',
+                author: 'Admin',
+                assignedTo: operator,
+                client: {
+                    nome: client,
+                    indirizzo: address,
+                    tel: phone,
+                    date: Utils.today(),
+                    dataIntervento: Utils.today()
+                },
+                intervention: {
+                    tipo: type.toLowerCase(),
+                    tipo_label: type,
+                    note: notes
+                },
+                materials: [],
+                total: '0.00',
+                category: 'refrigerazione',
+                createdAt: new Date().toLocaleString('it-IT')
+            };
+
+            Store.save(data);
+            Store.addLog(`Commessa creata per ${operator} - Cliente: ${client}`);
+            UI.showToast('Commessa assegnata con successo!', 'success');
+            
+            Utils.id('createCommessaModal').remove();
+            App.goToDashboard();
+        }
     };
 
     // ========== SIGNATURE PAD ==========
@@ -2162,60 +2641,11 @@
                         <div class="form-group"><label>BTU</label><select name="m_${i}_btu"><option>9000</option><option>12000</option><option>18000</option></select></div>
                         <div class="form-group"><label>Stanza</label><input type="text" name="m_${i}_room"></div>
                     </div>
-                    
-                    <div style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed var(--border-color);">
-                        <label style="color: var(--primary); font-weight: 700;">Foto Impianto (Max 3)</label>
-                        <div class="machine-photos-grid" id="photos_grid_${i}">
-                            ${[1, 2, 3].map(n => `
-                                <div class="machine-photo-item">
-                                    <img id="preview_m_${i}_${n}" src="" style="display:none;">
-                                    <div class="machine-photo-label" id="label_m_${i}_${n}">+ Aggiungi Foto ${n}</div>
-                                    <input type="file" accept="image/*" capture="environment" class="machine-photo-input" 
-                                        onchange="FormManager.previewMachinePhoto(this, ${i}, ${n})">
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
                 `; 
                 container.appendChild(div); 
             } 
         },
         calcEmissions: (index) => { const gasSelect = document.querySelector(`[name="m_${index}_gas"]`); const qtyInput = document.querySelector(`[name="m_${index}_gas_qty"]`); const gwpInput = document.querySelector(`[name="m_${index}_gwp"]`); const co2Input = document.querySelector(`[name="m_${index}_co2"]`); if (!gasSelect || !qtyInput) return; const gasType = gasSelect.value; const qty = parseFloat(qtyInput.value) || 0; const gwpMap = { 'R32': 675, 'R410A': 2088, 'R134a': 1430 }; const gwp = gwpMap[gasType] || 0; gwpInput.value = gwp; co2Input.value = ((qty / 1000) * gwp).toFixed(2); },
-        previewMachinePhoto: (input, machineIndex, photoIndex) => {
-            const file = input.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const img = new Image();
-                img.src = e.target.result;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 600; 
-                    const MAX_HEIGHT = 450;
-                    let width = img.width;
-                    let height = img.height;
-                    if (width > height) {
-                        if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-                    } else {
-                        if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
-                    }
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-                    const compressedData = canvas.toDataURL('image/jpeg', 0.7);
-                    const previewImg = Utils.id(`preview_m_${machineIndex}_${photoIndex}`);
-                    const labelDiv = Utils.id(`label_m_${machineIndex}_${photoIndex}`);
-                    if(previewImg) {
-                        previewImg.src = compressedData;
-                        previewImg.style.display = 'block';
-                    }
-                    if(labelDiv) labelDiv.style.display = 'none';
-                    input.setAttribute('data-base64', compressedData);
-                };
-            };
-            reader.readAsDataURL(file);
-        },
         showMaterialDropdown: () => { 
             const searchInput = Utils.id('materialSearch'); 
             const dropdown = Utils.id('materialDropdown'); 
@@ -2311,20 +2741,9 @@
             const machines = []; 
             for (let i = 1; i <= count; i++) { 
                 const getVal = (name) => document.querySelector(`[name="m_${i}_${name}"]`)?.value || ''; 
-                const photos = [];
-                for(let p = 1; p <= 3; p++) {
-                    const photoInput = document.querySelector(`#photos_grid_${i} input[type="file"]:nth-child(${p})`);
-                    if(photoInput && photoInput.getAttribute('data-base64')) {
-                        photos.push(photoInput.getAttribute('data-base64'));
-                    } else {
-                        const existingPhoto = Utils.id(`existing_m_${i}_${p}`)?.value;
-                        if(existingPhoto) photos.push(existingPhoto);
-                    }
-                }
                 machines.push({ 
                     brand: getVal('brand'), model: getVal('model'), sn_int: getVal('sn_int'), sn_out: getVal('sn_out'), 
-                    gas: getVal('gas'), gas_qty: getVal('gas_qty'), gwp: getVal('gwp'), co2: getVal('co2'), btu: getVal('btu'), room: getVal('room'),
-                    photos: photos 
+                    gas: getVal('gas'), gas_qty: getVal('gas_qty'), gwp: getVal('gwp'), co2: getVal('co2'), btu: getVal('btu'), room: getVal('room')
                 }); 
             } 
             const techData = {}; 
@@ -2423,60 +2842,28 @@
             if (techDataFiltered.length > 0) { if (y > 240) { doc.addPage(); y = 20; } doc.setFillColor(241, 245, 249); doc.roundedRect(left, y, contentWidth, 20, 2, 2, 'F'); y += 4; let items = techDataFiltered.map(([key, val]) => ({ label: techLabels[key] || key.replace('tech_', ''), value: val })); let currentX = left + 4; doc.setFontSize(8); items.forEach((item) => { if (currentX > left + 150) { currentX = left + 4; y += 8; } doc.setTextColor(...gray); doc.text(item.label + ':', currentX, y); doc.setTextColor(...dark); doc.text(Utils.sanitize(item.value), currentX + 30, y); currentX += 60; }); y += 14; }
             if (data.machines.length > 0) { 
                 drawSectionHeader('Macchine / Impianti'); 
-                data.machines.forEach((m, mIndex) => { 
+                data.machines.forEach((m) => { 
                     if (y > 220) { doc.addPage(); y = 20; } 
                     doc.setFontSize(10); doc.setTextColor(...primary); doc.setFont('helvetica', 'bold'); 
-                    doc.text(`Unità #${mIndex + 1}`, left, y); 
+                    doc.text(`Unità`, left, y); 
                     y += 6; 
                     doc.autoTable({ 
                         startY: y, 
-                        head: [['Marca', 'Modello', 'Matr. Int', 'Matr. Est', 'Gas', 'Qty(gr)', 'GWP', 'CO2(kg)', 'BTU', 'Stanza']], 
+                        head: [['Marca', 'Modello', 'Matr. Int', 'Matr. Est', 'Gas', 'Qty(gr)']], 
                         body: [[ 
                             Utils.sanitize(m.brand), 
                             Utils.sanitize(m.model), 
                             m.sn_int || '-', 
                             m.sn_out || '-', 
                             m.gas || '-', 
-                            m.gas_qty || '-', 
-                            m.gwp || '-', 
-                            m.co2 || '-', 
-                            m.btu || '-', 
-                            m.room || '-' 
+                            m.gas_qty || '-'
                         ]], 
                         theme: 'grid', 
                         headStyles: { fillColor: dark, fontSize: 7, textColor: 255, fontStyle: 'bold' }, 
                         styles: { fontSize: 7, cellPadding: 1.5, textColor: dark, lineColor: [230, 230, 230] }, 
                         margin: { left: left } 
                     });  
-                    y = doc.lastAutoTable.finalY + 5;
-                    if (m.photos && m.photos.length > 0) {
-                        if (y > 200) { doc.addPage(); y = 20; }
-                        doc.setFontSize(8); doc.setTextColor(...gray); doc.text('Foto Impianto:', left, y); y += 5;
-                        
-                        const photoWidth = 50; 
-                        const photoHeight = 37.5; 
-                        const gap = 5; 
-                        let currentX = left;
-
-                        m.photos.forEach((photoSrc, pIdx) => {
-                            if (pIdx > 0 && currentX + photoWidth > pageWidth - left) { 
-                                currentX = left; 
-                                y += photoHeight + gap; 
-                            }
-                            if (y + photoHeight > 280) { 
-                                doc.addPage(); 
-                                y = 20; 
-                                currentX = left; 
-                            }
-                            try { 
-                                doc.addImage(photoSrc, 'JPEG', currentX, y, photoWidth, photoHeight); 
-                            } catch(e) { 
-                                console.error("Errore foto PDF", e); 
-                            }
-                            currentX += photoWidth + gap;
-                        });
-                        y += photoHeight + 10;
-                    }
+                    y = doc.lastAutoTable.finalY + 10;
                 }); 
             }
             if (data.materials.length > 0) { drawSectionHeader('Materiali Utilizzati'); doc.autoTable({ startY: y, head: [['Descrizione', 'Q.tà', 'Prezzo', 'Totale']], body: data.materials.map(m => [ Utils.sanitize(m.desc), m.qta, `€ ${m.price.toFixed(2)}`, `€ ${m.total.toFixed(2)}` ]), theme: 'grid', headStyles: { fillColor: primary, fontSize: 9, textColor: 255 }, styles: { fontSize: 9, cellPadding: 3 }, margin: { left: left } }); y = doc.lastAutoTable.finalY + 5; doc.setFillColor(16, 185, 129); doc.roundedRect(pageWidth - left - 60, y, 60, 12, 2, 2, 'F'); doc.setTextColor(255); doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.text(`TOTALE: € ${data.total}`, pageWidth - left - 30, y + 8, { align: 'center' }); y += 20; }
@@ -2491,130 +2878,63 @@
 
     // ========== HISTORY MANAGER ==========
     const HistoryManager = {
-        render: () => { const tbody = Utils.id('historyBody'); if (!tbody) return; const filter = Utils.id('searchHistory')?.value?.toLowerCase() || ''; tbody.innerHTML = ''; const items = Store.getAll().filter(i => i.client.nome.toLowerCase().includes(filter)); if (items.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:40px;">Nessun intervento trovato</td></tr>'; return; } items.forEach(item => { const badge = item.category === 'riscaldamento' ? '<span class="badge badge-hot">Caldo</span>' : '<span class="badge badge-cold">Freddo</span>'; tbody.innerHTML += `<tr class="${item.status === 'chiuso' ? 'row-closed' : 'row-suspended'}"><td>${item.client.date}</td><td><strong>${item.client.nome}</strong></td><td>${badge}</td><td>${item.intervention.tipo_label || '-'}</td><td>E ${item.total}</td><td>${item.author || '-'}</td><td><button class="btn btn-sm btn-primary" onclick="App.loadEdit('${item.id}')">Modifica</button><button class="btn btn-sm btn-success" onclick="App.downloadPDF('${item.id}')">PDF</button><button class="btn btn-sm btn-danger" onclick="App.deleteItem('${item.id}')">Elimina</button></td></tr>`; }); }
-    };
-
-    // ========== APP CONTROLLER ==========
-    const App = {
-        init: () => { FormManager.reset(); if (Auth.currentUser?.role === 'admin') { Admin.renderUsers(); Warehouse.render(); } CommunicationManager.updateNotificationBadge(); CallManager.init(); },
-        goToDashboard: () => UI.showView('view-dashboard'),
-        goToForm: (category) => { FormManager.reset(); FormManager.setCategory(category); FormManager.renderMachines(); UI.showView('view-form'); },
-        goToHistory: () => { HistoryManager.render(); UI.showView('view-history'); },
-        goToAdmin: () => { Admin.renderUsers(); Admin.renderLogs(); UI.showView('view-admin'); },
-        goToWarehouse: () => { Warehouse.render(); UI.showView('view-warehouse'); },
-        goToCommunication: () => { CommunicationManager.render(); UI.showView('view-communication'); },
-        goToDomicile: () => { DomicileManager.init(); DomicileManager.render(); UI.showView('view-domicile'); },
-        goToTimbratura: () => { window.open('https://gestionetimbrature.netlify.app/', '_blank'); },
-        
-        goToEquipment: () => { App.openExternalView('attrezzatura.html'); },
-        goToVehicles: () => { App.openExternalView('mezzi.html'); },
-        
-        openExternalView: (fileName) => {
-            UI.showView('view-external');
-            const iframe = Utils.id('mainExternalFrame');
-            iframe.src = fileName;
-            Utils.id('closeIframeBtn').classList.add('visible');
-        },
-
-        closeExternalView: () => {
-            Utils.id('mainExternalFrame').src = '';
-            Utils.id('closeIframeBtn').classList.remove('visible');
-            App.goToDashboard();
-        },
-        
-        confirmExit: () => { UI.confirm('Uscita', 'I dati non salvati saranno persi. Continuare?', () => { App.goToDashboard(); }); },
-        promptStatus: () => { if (SignaturePad.isEmpty('sigTech')) { UI.showToast('Firma operatore obbligatoria', 'error'); return; } UI.openModal('statusModal'); },
-        
-        finalizeSave: (status) => {
-            UI.closeModal('statusModal'); 
-            const data = FormManager.collectData(); 
-            data.status = status;
-
-            const materialsToConsume = data.materials.filter(m => m.fromWarehouse);
-
-            materialsToConsume.forEach(m => {
-                const updatedItem = Store.updateMaterialStock(m.fromWarehouse, m.qta);
-                
-                if (updatedItem) {
-                    Store.addMaterialHistory({
-                        operator: data.author,
-                        materialName: m.desc,
-                        quantityUsed: m.qta,
-                        clientName: data.client.nome,
-                        newStock: updatedItem.quantity, 
-                        time: new Date().toLocaleString('it-IT') 
-                    });
-                } else {
-                    console.warn(`Materiale non trovato in magazzino: ${m.desc}`);
-                }
-            });
-
-            Store.save(data); 
-            Store.addLog(`Intervento ${status} salvato per ${data.client.nome} da ${Auth.currentUser.username}`);
+        render: () => { 
+            const tbody = Utils.id('historyBody'); 
+            if (!tbody) return; 
             
-            PDF.generate(data);
+            const filter = Utils.id('searchHistory')?.value?.toLowerCase() || ''; 
+            tbody.innerHTML = ''; 
+            
+            let items = Store.getAll();
 
-            if (Auth.currentUser?.role === 'admin') { 
-                Warehouse.render(); 
+            // Filtro per utente (non admin)
+            if (Auth.currentUser && Auth.currentUser.role !== 'admin') {
+                items = items.filter(i => i.author === Auth.currentUser.username || i.assignedTo === Auth.currentUser.username);
+            }
+
+            items = items.filter(i => i.client.nome.toLowerCase().includes(filter));
+
+            if (items.length === 0) { 
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:40px;">Nessun intervento trovato</td></tr>'; 
+                return; 
             } 
             
-            setTimeout(() => App.goToDashboard(), 1500);
-        },
-        
-        loadEdit: (id) => {
-            const data = Store.getById(id); if (!data) return; UI.showView('view-form'); FormManager.reset(); FormManager.setCategory(data.category); Utils.id('editId').value = data.id;
-            Utils.id('c_nome').value = data.client.nome || ''; Utils.id('c_indirizzo').value = data.client.indirizzo || ''; Utils.id('c_intervention_date').value = data.client.dataIntervento || ''; 
-            Utils.id('c_date').value = data.client.date || Utils.today(); Utils.id('c_tel').value = data.client.tel || ''; Utils.id('c_email').value = data.client.email || ''; Utils.id('c_fiscal').value = data.client.fiscal || ''; Utils.id('c_receipt_no').value = data.client.receipt_no || '';
-            Utils.id('op_name').value = data.author || ''; Utils.id('i_tipo').value = data.intervention.tipo; Utils.id('i_note').value = data.intervention.note || '';
-            FormManager.toggleTypeFields();
-            setTimeout(() => { Object.entries(data.intervention.techData).forEach(([k, v]) => { const el = Utils.id(k); if (el) el.value = v; }); }, 100);
-            Utils.id('m_count').value = data.machines.length || 1; FormManager.renderMachines();
-            setTimeout(() => { 
-                data.machines.forEach((m, i) => { 
-                    const idx = i + 1; 
-                    const setVal = (name, val) => { const el = document.querySelector(`[name="m_${idx}_${name}"]`); if (el) el.value = val || ''; }; 
-                    setVal('brand', m.brand); 
-                    setVal('model', m.model); 
-                    setVal('sn_int', m.sn_int); 
-                    setVal('sn_out', m.sn_out); 
-                    setVal('gas', m.gas); 
-                    setVal('gas_qty', m.gas_qty); 
-                    setVal('gwp', m.gwp);
-                    setVal('co2', m.co2);
-                    setVal('btu', m.btu); 
-                    setVal('room', m.room); 
-                    FormManager.calcEmissions(idx); 
-                    if (m.photos && Array.isArray(m.photos)) {
-                        setTimeout(() => {
-                            m.photos.forEach((photoData, photoIndex) => {
-                                const pIdx = photoIndex + 1;
-                                const previewImg = Utils.id(`preview_m_${idx}_${pIdx}`);
-                                const labelDiv = Utils.id(`label_m_${idx}_${pIdx}`);
-                                if (previewImg) {
-                                    previewImg.src = photoData;
-                                    previewImg.style.display = 'block';
-                                }
-                                if (labelDiv) labelDiv.style.display = 'none';
-                                if(previewImg && previewImg.nextElementSibling) {
-                                    const parentItem = previewImg.parentElement;
-                                    const fileInput = parentItem.querySelector('input[type="file"]');
-                                    if(fileInput) {
-                                        fileInput.setAttribute('data-base64', photoData);
-                                    }
-                                }
-                            });
-                        }, 100);
-                    }
-                }); 
-            }, 100);
-            FormManager.materials = data.materials || []; FormManager.renderMaterials();
-        },
-        downloadPDF: (id) => { const data = Store.getById(id); if (data) PDF.generate(data); },
-        deleteItem: (id) => { UI.confirm('Eliminazione', 'Eliminare definitivamente questo intervento?', () => { Store.delete(id); Store.addLog(`Intervento eliminato da ${Auth.currentUser.username}`); UI.showToast('Intervento eliminato', 'info'); }); }
-    };
+            items.forEach(item => { 
+                const badge = item.category === 'riscaldamento' ? '<span class="badge badge-hot">Caldo</span>' : '<span class="badge badge-cold">Freddo</span>'; 
+                
+                let rowClass = '';
+                let actions = '';
 
+                // Gestione Visuale Commesse Assegnate
+                if (item.status === 'assegnato') {
+                    rowClass = 'row-assigned';
+                    actions = `<button class="btn btn-sm btn-warning" onclick="App.openAssignmentDetails('${item.id}')"><i class="fas fa-eye"></i> Visualizza Commessa</button>`;
+                } else {
+                    rowClass = item.status === 'chiuso' ? 'row-closed' : 'row-suspended';
+                    actions = `
+                        <button class="btn btn-sm btn-primary" onclick="App.loadEdit('${item.id}')">Modifica</button>
+                        <button class="btn btn-sm btn-success" onclick="App.downloadPDF('${item.id}')">PDF</button>
+                        <button class="btn btn-sm btn-danger" onclick="App.deleteItem('${item.id}')">Elimina</button>
+                    `;
+                }
+
+                tbody.innerHTML += `<tr class="${rowClass}">
+                    <td>${item.client.date}</td>
+                    <td><strong>${item.client.nome}</strong></td>
+                    <td>${badge}</td>
+                    <td>${item.intervention.tipo_label || '-'}</td>
+                    <td>E ${item.total}</td>
+                    <td>${item.author || '-'}</td>
+                    <td>${actions}</td>
+                </tr>`; 
+            }); 
+        }
+    };
+        
+    // Event Listener per chiusura dropdown materiali
     document.addEventListener('click', (e) => { const dropdown = Utils.id('materialDropdown'); const searchInput = Utils.id('materialSearch'); if (dropdown && !dropdown.contains(e.target) && e.target !== searchInput) { dropdown.classList.remove('show'); } });
 
+    // Inizializzazione Store e Auth
     Store.setup();
     window.onload = Auth.init;
     </script>
