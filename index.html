@@ -40,6 +40,7 @@
             --vehicles: #0d9488;
             --timbra: #3b82f6;
             --domicile: #f59e0b;
+            --covercare: #0056b3; /* Nuovo colore per Covercare */
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -194,6 +195,7 @@
         .dash-card.equipment::before { background: linear-gradient(90deg, var(--equipment), #2dd4bf); }
         .dash-card.vehicles::before { background: linear-gradient(90deg, var(--vehicles), #14b8a6); }
         .dash-card.domicile::before { background: linear-gradient(90deg, var(--domicile), #fbbf24); }
+        .dash-card.covercare::before { background: linear-gradient(90deg, var(--covercare), #004494); }
         
         .dash-icon { font-size: 3.5rem; margin-bottom: 18px; display: block; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3)); }
         .dash-title { font-size: 1.4rem; font-weight: 700; margin-bottom: 10px; color: var(--text-primary); }
@@ -806,7 +808,7 @@
                 <select id="callTimeSlot" style="background: var(--bg-body);">
                     <option value="09:00 - 12:00">Mattina: 09:00 - 12:00</option>
                     <option value="12:00 - 14:00">Pranzo: 12:00 - 14:00</option>
-                    <option value="14:00 - 18:00">Pomeriggio: 14:00 - 18:00</option>
+                    <option value="14:00 - 18:00">Pomereddio: 14:00 - 18:00</option>
                     <option value="18:00 - 20:00">Sera: 18:00 - 20:00</option>
                     <option value="personalizzato">Personalizzato...</option>
                 </select>
@@ -905,6 +907,13 @@
                     <span class="dash-icon">🏠</span>
                     <div class="dash-title">Domicilio</div>
                     <p>Consegne, incassi e documenti</p>
+                </div>
+                
+                <!-- NUOVA CARD: COVERCARE -->
+                <div class="dash-card covercare" onclick="App.goToCovercare()">
+                    <span class="dash-icon">🛡️</span>
+                    <div class="dash-title">Covercare</div>
+                    <p>Modulo intervento Covercare</p>
                 </div>
 
                 <div class="dash-card comm" onclick="App.goToCommunication()" style="position: relative;">
@@ -1470,6 +1479,7 @@
             
             goToEquipment: () => { App.openExternalView('attrezzatura.html'); },
             goToVehicles: () => { App.openExternalView('mezzi.html'); },
+            goToCovercare: () => { App.openExternalView('covercare.html'); }, // NUOVA FUNZIONE
             
             openExternalView: (fileName) => {
                 UI.showView('view-external');
@@ -1760,7 +1770,7 @@
             }
         };
 
-        // ========== DOMICILE MANAGER ==========
+                // ========== DOMICILE MANAGER ==========
         const DomicileManager = {
             currentTicketId: null,
             currentStatusFilter: '',
@@ -1924,11 +1934,10 @@
                 document.querySelectorAll('.sortable-row.over').forEach(el => el.classList.remove('over'));
             },
 
-                        saveOrder: () => {
+            saveOrder: () => {
                 const rows = Utils.id('domicileTableBody').querySelectorAll('tr.sortable-row');
                 if (rows.length === 0) return;
 
-                // Utilizziamo un batch per scrivere tutto insieme
                 const batch = db.batch();
                 let count = 0;
 
@@ -1937,11 +1946,9 @@
                     if (!id) return;
                     
                     const ref = db.collection("domicile_tickets").doc(id);
-                    
-                    // Creiamo un campo semplice: orderNumber (1, 2, 3...)
                     batch.update(ref, { 
                         orderNumber: index + 1,
-                        orderIndex: index // Manteniamo anche il vecchio per compatibilità
+                        orderIndex: index 
                     });
                     count++;
                 });
@@ -2453,7 +2460,7 @@
         renderUsers: () => { const tbody = Utils.id('adminUsersBody'); if (!tbody) return; tbody.innerHTML = ''; Store.getUsers().forEach(u => { const isMe = Auth.currentUser?.id === u.id; tbody.innerHTML += `<tr><td>${u.username} ${isMe ? '<small>(tu)</small>' : ''}</td><td><span class="badge ${u.username === 'admin' ? 'badge-admin' : 'badge-cold'}">${u.role}</span></td><td><button class="btn btn-sm btn-warning" onclick="Admin.openUserModal('${u.id}')" ${isMe ? 'disabled' : ''}>Modifica</button></td></tr>`; }); },
         renderLogs: () => { const logContainer = Utils.id('activityLog'); if (logContainer) { logContainer.innerHTML = Store.localLogs.map(l => `<div class="log-entry"><span class="log-time">[${l.time}]</span>${l.msg}</div>`).join(''); } },
         openUserModal: (id = null) => { Utils.id('editUserId').value = id || ''; Utils.id('editUserUsername').value = ''; Utils.id('editUserPass').value = ''; Utils.id('editUserRole').value = 'user'; Utils.id('userModalTitle').innerText = id ? 'Modifica Utente' : 'Nuovo Utente'; if (id) { const u = Store.getUsers().find(x => x.id === id); if (u) { Utils.id('editUserUsername').value = u.username; Utils.id('editUserRole').value = u.role; } } UI.openModal('userModal'); },
-                saveUser: () => { 
+        saveUser: () => { 
             const id = Utils.id('editUserId').value; 
             const username = Utils.id('editUserUsername').value.trim(); 
             let pass = Utils.id('editUserPass').value; 
