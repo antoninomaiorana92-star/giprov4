@@ -1715,12 +1715,28 @@
             confirmCall: () => {
                 let slot = Utils.id('callTimeSlot').value;
                 if(slot === 'personalizzato') slot = Utils.id('callCustomTime').value;
-                CallManager.saveCallData('Confermato', slot);
+                
+                // Salvataggio su DB
+                CallManager.saveCallData('Confermato', slot, () => {
+                    // Dopo aver salvato, invia messaggio WhatsApp
+                    const t = Store.getDomicileTickets().find(t => t.id === CallManager.currentTicketId);
+                    if(t && t.phone) {
+                        const trackingLink = `https://antoninomaiorana92-star.github.io/giprov4/`;
+                        const message = `Gentile Cliente, la informiamo che la sua consegna è confermata per la fascia oraria: ${slot}.\n\nPuò tracciare la sua consegna al seguente link:\n${trackingLink}\n\nID Ticket: ${t.ticketId || t.id.substring(0,4)}`;
+                        
+                        // Pulisce il numero (rimuove spazi, +, ecc.)
+                        let phoneNumber = t.phone.replace(/\s/g, '');
+                        if(!phoneNumber.startsWith('+')) phoneNumber = '+39' + phoneNumber; // Aggiunge prefisso se mancante
+
+                        const waLink = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+                        window.open(waLink, '_blank');
+                    }
+                });
             },
             updateCallStatus: (status) => {
                 CallManager.saveCallData(status, null);
             },
-            saveCallData: (callStatus, timeSlot) => {
+            saveCallData: (callStatus, timeSlot, callback) => {
                 const id = CallManager.currentTicketId;
                 if(!id || !db) return;
                 const notes = Utils.id('callNotesInput').value;
@@ -1735,6 +1751,7 @@
                     UI.showToast(`Chiamata registrata: ${callStatus}`, 'success');
                     UI.closeModal('callModal');
                     Store.addLog(`Chiamata ${callStatus} per ticket ${id}`);
+                    if(callback) callback();
                 })
                 .catch(err => {
                     console.error(err);
@@ -2439,20 +2456,18 @@
                 saveUser: () => { 
             const id = Utils.id('editUserId').value; 
             const username = Utils.id('editUserUsername').value.trim(); 
-            let pass = Utils.id('editUserPass').value; // Leggiamo il valore
+            let pass = Utils.id('editUserPass').value; 
             const role = Utils.id('editUserRole').value; 
             
             if (!username) { UI.showToast('Username obbligatorio', 'error'); return; } 
             
             if (id) { 
-                // MODIFICA UTENTE ESISTENTE
                 const data = { username, role }; 
-                if (pass) data.password = pass; // Aggiorna password solo se inserita
+                if (pass) data.password = pass; 
                 db.collection("users").doc(id).update(data); 
                 Store.addLog(`Admin ha modificato l'utente ${username}`); 
                 UI.showToast('Utente modificato!', 'success');
             } else { 
-                // NUOVO UTENTE
                 if (!pass) { 
                     UI.showToast('Password obbligatoria per nuovi utenti', 'error'); 
                     return; 
@@ -2466,7 +2481,6 @@
         },
         exportAllData: () => { const backup = { interventions: Store.localInterventions, warehouse: Store.localWarehouse, users: Store.localUsers, logs: Store.localLogs, materialHistory: Store.localMaterialHistory, messages: Store.localMessages, domicileTickets: Store.localDomicileTickets, exportDate: new Date().toISOString() }; const blob = new Blob([JSON.stringify(backup, null, 2)], {type: 'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `backup_completo_gipro_${new Date().toISOString().split('T')[0]}.json`; a.click(); URL.revokeObjectURL(url); UI.showToast('Backup completato', 'success'); },
 
-        // --- FUNZIONI COMMESSA (ASSEGNAZIONE) ---
         openAssignmentModal: () => {
             const currentName = Utils.id('c_nome').value;
             const currentAddress = Utils.id('c_indirizzo').value;
@@ -2911,11 +2925,19 @@
                     actions = `<button class="btn btn-sm btn-warning" onclick="App.openAssignmentDetails('${item.id}')"><i class="fas fa-eye"></i> Visualizza Commessa</button>`;
                 } else {
                     rowClass = item.status === 'chiuso' ? 'row-closed' : 'row-suspended';
-                    actions = `
-                        <button class="btn btn-sm btn-primary" onclick="App.loadEdit('${item.id}')">Modifica</button>
-                        <button class="btn btn-sm btn-success" onclick="App.downloadPDF('${item.id}')">PDF</button>
-                        <button class="btn btn-sm btn-danger" onclick="App.deleteItem('${item.id}')">Elimina</button>
-                    `;
+                    
+                    // MODIFICA: Logica permessi admin
+                    if (Auth.currentUser && Auth.currentUser.role === 'admin') {
+                        // L'admin può sempre modificare ed eliminare
+                        actions = `
+                            <button class="btn btn-sm btn-primary" onclick="App.loadEdit('${item.id}')">Modifica</button>
+                            <button class="btn btn-sm btn-success" onclick="App.downloadPDF('${item.id}')">PDF</button>
+                            <button class="btn btn-sm btn-danger" onclick="App.deleteItem('${item.id}')">Elimina</button>
+                        `;
+                    } else {
+                        // Gli utenti standard vedono solo PDF
+                        actions = `<button class="btn btn-sm btn-success" onclick="App.downloadPDF('${item.id}')">PDF</button>`;
+                    }
                 }
 
                 tbody.innerHTML += `<tr class="${rowClass}">
