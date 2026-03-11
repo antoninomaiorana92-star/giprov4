@@ -564,17 +564,6 @@
             box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.3);
         }
 
-        /* Footer versione */
-        .app-footer {
-            text-align: center;
-            padding: 16px;
-            color: var(--text-secondary);
-            font-size: 0.8rem;
-            border-top: 1px solid var(--border-color);
-            margin-top: auto;
-        }
-        .app-footer a { color: var(--primary); text-decoration: none; }
-
         @media (max-width: 768px) {
             .container { padding: 15px; padding-top: 85px; }
             .card { padding: 20px; }
@@ -626,8 +615,7 @@
     <div class="user-badge" id="userBadge">
         <span class="username" id="loggedUser">-</span>
         <span id="badgeRole" class="badge badge-admin" style="display:none;">ADMIN</span>
-        <button type="button" onclick="UI.openModal('pwModal')" style="background:none; border:none; color:var(--primary); cursor:pointer; font-size:0.85rem; padding:2px 6px;" title="Cambia password">🔑</button>
-        <button onclick="App.confirmLogout()">Logout</button>
+        <button onclick="Auth.logout()">Logout</button>
     </div>
 
     <!-- TOAST CONTAINER -->
@@ -1120,14 +1108,6 @@
                 <div class="form-grid" style="margin-top: 25px; grid-template-columns: 1fr;">
                     <div class="form-group"><label>Destinatario</label><select id="msgRecipient" style="background: var(--bg-body);"><option value="all">📢 A Tutti (Bacheca Generale)</option></select></div>
                     <div class="form-group"><label>Nuovo Messaggio</label><textarea id="newMessageContent" rows="3" placeholder="Scrivi un avviso o comunicazione..."></textarea></div>
-                    <div class="form-group">
-                        <label>Allegato immagine (max 1MB)</label>
-                        <input type="file" id="msgAttachment" accept="image/*" onchange="CommunicationManager.previewAttachment(event)" style="padding:8px;">
-                        <div id="msgAttachmentPreview" class="hidden" style="margin-top:10px; padding:10px; background:var(--bg-body); border-radius:8px;">
-                            <img id="msgPreviewImg" alt="Anteprima" style="max-width:200px; max-height:150px; border-radius:6px;">
-                            <div style="margin-top:6px; font-size:0.85rem; color:var(--text-secondary);"><span id="msgFileName"></span> <button type="button" class="btn btn-sm btn-danger" onclick="CommunicationManager.clearAttachment()" style="margin-left:10px;">Rimuovi</button></div>
-                        </div>
-                    </div>
                 </div>
                 <div class="text-right" style="margin-top: 10px;"><button class="btn btn-primary" onclick="CommunicationManager.sendMessage()">Invia Messaggio</button></div>
             </div>
@@ -1411,9 +1391,7 @@
                 </div>
                 <div class="card mt-2" style="border-color: var(--warning);">
                     <h3 style="margin:0 0 15px; color: var(--warning);">Backup & Sincronizzazione Dati</h3>
-                    <p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:8px;">I dati sono salvati in Cloud su Firebase.</p>
-                    <p style="color:var(--text-secondary); font-size:0.85rem; margin-bottom:15px;">Consigliato: esegui un backup periodico (es. mensile) per avere una copia locale.</p>
-                    <p id="lastBackupDate" style="font-size:0.85rem; color:var(--success); margin-bottom:12px;"></p>
+                    <p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:15px;">I dati sono salvati in Cloud su Firebase.</p>
                     <div class="action-group"><button class="btn btn-warning" onclick="Admin.exportAllData()">Esporta Tutto (Backup Locale)</button></div>
                 </div>
             </div>
@@ -1427,10 +1405,6 @@
         </button>
         <iframe id="mainExternalFrame" class="external-iframe" src=""></iframe>
     </div>
-
-    <footer class="app-footer" id="appFooter">
-        GIPRO v2.0 — Gestione Interventi Pro · Backup periodico consigliato
-    </footer>
 
     <script>
         // ========== FIREBASE CONFIGURATION ==========
@@ -1562,7 +1536,7 @@
             goToDashboard: () => UI.showView('view-dashboard'),
             goToForm: (category) => { FormManager.reset(); FormManager.setCategory(category); FormManager.renderMachines(); UI.showView('view-form'); },
             goToHistory: () => { HistoryManager.render(); UI.showView('view-history'); },
-            goToAdmin: () => { Admin.renderUsers(); Admin.renderLogs(); Admin.renderLastBackup(); UI.showView('view-admin'); },
+            goToAdmin: () => { Admin.renderUsers(); Admin.renderLogs(); UI.showView('view-admin'); },
             goToWarehouse: () => { Warehouse.render(); UI.showView('view-warehouse'); },
             goToCommunication: () => { CommunicationManager.render(); UI.showView('view-communication'); },
             goToCorso: () => { if (typeof CourseManager !== 'undefined' && CourseManager.render) CourseManager.render(); UI.showView('view-corso'); },
@@ -1722,10 +1696,6 @@
                 App.loadEdit(id); 
                 
                 UI.showToast('Compila i dati tecnici e firma per chiudere la commessa', 'info');
-            },
-
-            confirmLogout: () => {
-                UI.confirm('Esci', 'Sei sicuro di voler uscire? Verrai disconnesso.', () => Auth.logout());
             }
         };
         
@@ -2587,7 +2557,6 @@
     const Admin = {
         renderUsers: () => { const tbody = Utils.id('adminUsersBody'); if (!tbody) return; tbody.innerHTML = ''; Store.getUsers().forEach(u => { const isMe = Auth.currentUser?.id === u.id; tbody.innerHTML += `<tr><td>${u.username} ${isMe ? '<small>(tu)</small>' : ''}</td><td><span class="badge ${u.username === 'admin' ? 'badge-admin' : 'badge-cold'}">${u.role}</span></td><td><button class="btn btn-sm btn-warning" onclick="Admin.openUserModal('${u.id}')" ${isMe ? 'disabled' : ''}>Modifica</button></td></tr>`; }); },
         renderLogs: () => { const logContainer = Utils.id('activityLog'); if (logContainer) { logContainer.innerHTML = Store.localLogs.map(l => `<div class="log-entry"><span class="log-time">[${l.time}]</span>${l.msg}</div>`).join(''); } },
-        renderLastBackup: () => { try { const last = localStorage.getItem('gipro_last_backup'); const el = Utils.id('lastBackupDate'); if (el) el.textContent = last ? 'Ultimo backup: ' + last : ''; } catch (e) {} },
         openUserModal: (id = null) => { Utils.id('editUserId').value = id || ''; Utils.id('editUserUsername').value = ''; Utils.id('editUserPass').value = ''; Utils.id('editUserRole').value = 'user'; Utils.id('userModalTitle').innerText = id ? 'Modifica Utente' : 'Nuovo Utente'; if (id) { const u = Store.getUsers().find(x => x.id === id); if (u) { Utils.id('editUserUsername').value = u.username; Utils.id('editUserRole').value = u.role; } } UI.openModal('userModal'); },
         saveUser: () => { 
             const id = Utils.id('editUserId').value; 
@@ -2615,7 +2584,7 @@
             } 
             UI.closeModal('userModal'); 
         },
-        exportAllData: () => { const backup = { interventions: Store.localInterventions, warehouse: Store.localWarehouse, users: Store.localUsers, logs: Store.localLogs, materialHistory: Store.localMaterialHistory, messages: Store.localMessages, domicileTickets: Store.localDomicileTickets, exportDate: new Date().toISOString() }; const blob = new Blob([JSON.stringify(backup, null, 2)], {type: 'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `backup_completo_gipro_${new Date().toISOString().split('T')[0]}.json`; a.click(); URL.revokeObjectURL(url); try { const now = new Date().toLocaleString('it-IT'); localStorage.setItem('gipro_last_backup', now); const el = Utils.id('lastBackupDate'); if (el) { el.textContent = 'Ultimo backup: ' + now; } } catch (e) {} UI.showToast('Backup completato', 'success'); },
+        exportAllData: () => { const backup = { interventions: Store.localInterventions, warehouse: Store.localWarehouse, users: Store.localUsers, logs: Store.localLogs, materialHistory: Store.localMaterialHistory, messages: Store.localMessages, domicileTickets: Store.localDomicileTickets, exportDate: new Date().toISOString() }; const blob = new Blob([JSON.stringify(backup, null, 2)], {type: 'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `backup_completo_gipro_${new Date().toISOString().split('T')[0]}.json`; a.click(); URL.revokeObjectURL(url); UI.showToast('Backup completato', 'success'); },
 
         openAssignmentModal: () => {
             const currentName = Utils.id('c_nome').value;
@@ -2964,155 +2933,6 @@
             doc.setTextColor(...dark); 
             doc.setFont('helvetica', 'bold'); 
             doc.text(Utils.sanitize(data.client.nome), left + 25, y);
-            
-            doc.setTextColor(...gray); 
-            doc.setFont('helvetica', 'normal'); 
-            doc.text('Telefono:', colX, y); 
-            doc.setTextColor(...dark); 
-            doc.text(data.client.tel || '-', colX + 22, y); 
-            y += 6;
-            
-            doc.setTextColor(...gray); 
-            doc.text('Indirizzo:', left, y); 
-            doc.setTextColor(...dark); 
-            doc.text(Utils.sanitize(data.client.indirizzo), left + 25, y);
-            
-            doc.setTextColor(...gray); 
-            doc.text('Email:', colX, y); 
-            doc.setTextColor(...dark); 
-            doc.text(data.client.email || '-', colX + 25, y); 
-            y += 6;
-            
-            doc.setTextColor(...gray); 
-            doc.text('P.IVA/C.F.:', left, y); 
-            doc.setTextColor(...dark); 
-            doc.text(data.client.fiscal || '-', left + 25, y); 
-            y += 6;
-            
-            doc.setTextColor(...gray); 
-            doc.text('Data Acquisto:', left, y); 
-            doc.setTextColor(...dark); 
-            doc.text(data.client.date || '-', left + 30, y);
-            
-            doc.setTextColor(...gray); 
-            doc.text('N. Scontrino:', colX, y); 
-            doc.setTextColor(...dark); 
-            doc.text(data.client.receipt_no || '-', colX + 25, y); 
-            y += 10;
-            drawSectionHeader('Dettagli Intervento');
-            doc.setTextColor(...dark); doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.text('Tipo: ', left, y); doc.setFont('helvetica', 'normal'); doc.text(data.intervention.tipo_label || '-', left + 15, y); y += 8;
-            if(data.intervention.note) { doc.setFontSize(9); doc.setTextColor(...gray); doc.text('Descrizione Lavoro:', left, y); y += 4; doc.setFillColor(...lightGray); doc.roundedRect(left, y, contentWidth, 20, 2, 2, 'F'); doc.setTextColor(...dark); y += 4; const lines = doc.splitTextToSize(Utils.sanitize(data.intervention.note), contentWidth - 6); doc.text(lines, left + 3, y); y += (lines.length * 5) + 6; }
-            const techLabels = { 'tech_imp_type': 'Tipologia', 'tech_drain': 'Condensa', 'tech_pipe_length': 'Tubi (m)', 'tech_height_diff': 'Dislivello (m)', 'tech_filters': 'Filtri', 'tech_press_low': 'Press. Bassa', 'tech_press_high': 'Press. Alta', 'tech_temp': 'Temp (°C)', 'tech_voltage': 'Tensione (V)', 'tech_gas_type': 'Gas', 'tech_gas_qty': 'Qty Gas', 'tech_error': 'Errore', 'tech_co': 'CO (ppm)', 'tech_efficiency': 'Rendimento' };
-            const techDataFiltered = Object.entries(data.intervention.techData).filter(([k, v]) => v);
-            if (techDataFiltered.length > 0) { if (y > 240) { doc.addPage(); y = 20; } doc.setFillColor(241, 245, 249); doc.roundedRect(left, y, contentWidth, 20, 2, 2, 'F'); y += 4; let items = techDataFiltered.map(([key, val]) => ({ label: techLabels[key] || key.replace('tech_', ''), value: val })); let currentX = left + 4; doc.setFontSize(8); items.forEach((item) => { if (currentX > left + 150) { currentX = left + 4; y += 8; } doc.setTextColor(...gray); doc.text(item.label + ':', currentX, y); doc.setTextColor(...dark); doc.text(Utils.sanitize(item.value), currentX + 30, y); currentX += 60; }); y += 14; }
-            if (data.machines.length > 0) { 
-                drawSectionHeader('Macchine / Impianti'); 
-                data.machines.forEach((m) => { 
-                    if (y > 220) { doc.addPage(); y = 20; } 
-                    doc.setFontSize(10); doc.setTextColor(...primary); doc.setFont('helvetica', 'bold'); 
-                    doc.text(`Unità`, left, y); 
-                    y += 6; 
-                    doc.autoTable({ 
-                        startY: y, 
-                        head: [['Marca', 'Modello', 'Matr. Int', 'Matr. Est', 'Gas', 'Qty(gr)']], 
-                        body: [[ 
-                            Utils.sanitize(m.brand), 
-                            Utils.sanitize(m.model), 
-                            m.sn_int || '-', 
-                            m.sn_out || '-', 
-                            m.gas || '-', 
-                            m.gas_qty || '-'
-                        ]], 
-                        theme: 'grid', 
-                        headStyles: { fillColor: dark, fontSize: 7, textColor: 255, fontStyle: 'bold' }, 
-                        styles: { fontSize: 7, cellPadding: 1.5, textColor: dark, lineColor: [230, 230, 230] }, 
-                        margin: { left: left } 
-                    });  
-                    y = doc.lastAutoTable.finalY + 10;
-                }); 
-            }
-            if (data.materials.length > 0) { drawSectionHeader('Materiali Utilizzati'); doc.autoTable({ startY: y, head: [['Descrizione', 'Q.tà', 'Prezzo', 'Totale']], body: data.materials.map(m => [ Utils.sanitize(m.desc), m.qta, `€ ${m.price.toFixed(2)}`, `€ ${m.total.toFixed(2)}` ]), theme: 'grid', headStyles: { fillColor: primary, fontSize: 9, textColor: 255 }, styles: { fontSize: 9, cellPadding: 3 }, margin: { left: left } }); y = doc.lastAutoTable.finalY + 5; doc.setFillColor(16, 185, 129); doc.roundedRect(pageWidth - left - 60, y, 60, 12, 2, 2, 'F'); doc.setTextColor(255); doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.text(`TOTALE: € ${data.total}`, pageWidth - left - 30, y + 8, { align: 'center' }); y += 20; }
-            drawSectionHeader('Firme'); const sigWidth = 80; const sigHeight = 35; if (y > 230) { doc.addPage(); y = 20; } const sigY = y;
-            doc.setDrawColor(...gray); doc.setLineWidth(0.5); doc.setFillColor(...lightGray); doc.roundedRect(left, sigY, sigWidth, sigHeight, 2, 2, 'FD'); doc.setFontSize(8); doc.setTextColor(...gray); doc.text('Firma Cliente', left + sigWidth/2, sigY + sigHeight + 5, {align: 'center'});
-            if (data.signatures.client) { try { doc.addImage(data.signatures.client, 'PNG', left + 5, sigY + 5, sigWidth - 10, sigHeight - 10); } catch(e) {} }
-            const techSigX = left + sigWidth + 20; doc.roundedRect(techSigX, sigY, sigWidth, sigHeight, 2, 2, 'FD'); doc.text('Firma Operatore', techSigX + sigWidth/2, sigY + sigHeight + 5, {align: 'center'});
-            if (data.signatures.tech) { try { doc.addImage(data.signatures.tech, 'PNG', techSigX + 5, sigY + 5, sigWidth - 10, sigHeight - 10); } catch(e) {} }
-            const filename = `Intervento_${Utils.sanitize(data.client.nome).replace(/\s+/g, '_')}_${data.client.date}.pdf`; doc.save(filename); UI.showToast('PDF scaricato', 'success');
-        }
-    };
-
-    // ========== HISTORY MANAGER ==========
-    const HistoryManager = {
-        render: () => { 
-            const tbody = Utils.id('historyBody'); 
-            if (!tbody) return; 
-            
-            const filter = Utils.id('searchHistory')?.value?.toLowerCase() || ''; 
-            tbody.innerHTML = ''; 
-            
-            let items = Store.getAll();
-
-            // Filtro per utente (non admin)
-            if (Auth.currentUser && Auth.currentUser.role !== 'admin') {
-                items = items.filter(i => i.author === Auth.currentUser.username || i.assignedTo === Auth.currentUser.username);
-            }
-
-            items = items.filter(i => i.client.nome.toLowerCase().includes(filter));
-
-            if (items.length === 0) { 
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:40px;">Nessun intervento trovato</td></tr>'; 
-                return; 
-            } 
-            
-            items.forEach(item => { 
-                const badge = item.category === 'riscaldamento' ? '<span class="badge badge-hot">Caldo</span>' : '<span class="badge badge-cold">Freddo</span>'; 
-                
-                let rowClass = '';
-                let actions = '';
-
-                // Gestione Visuale Commesse Assegnate
-                if (item.status === 'assegnato') {
-                    rowClass = 'row-assigned';
-                    actions = `<button class="btn btn-sm btn-warning" onclick="App.openAssignmentDetails('${item.id}')"><i class="fas fa-eye"></i> Visualizza Commessa</button>`;
-                } else {
-                    rowClass = item.status === 'chiuso' ? 'row-closed' : 'row-suspended';
-                    
-                    // MODIFICA: Logica permessi admin
-                    if (Auth.currentUser && Auth.currentUser.role === 'admin') {
-                        // L'admin può sempre modificare ed eliminare
-                        actions = `
-                            <button class="btn btn-sm btn-primary" onclick="App.loadEdit('${item.id}')">Modifica</button>
-                            <button class="btn btn-sm btn-success" onclick="App.downloadPDF('${item.id}')">PDF</button>
-                            <button class="btn btn-sm btn-danger" onclick="App.deleteItem('${item.id}')">Elimina</button>
-                        `;
-                    } else {
-                        // Gli utenti standard vedono solo PDF
-                        actions = `<button class="btn btn-sm btn-success" onclick="App.downloadPDF('${item.id}')">PDF</button>`;
-                    }
-                }
-
-                tbody.innerHTML += `<tr class="${rowClass}">
-                    <td>${item.client.date}</td>
-                    <td><strong>${item.client.nome}</strong></td>
-                    <td>${badge}</td>
-                    <td>${item.intervention.tipo_label || '-'}</td>
-                    <td>E ${item.total}</td>
-                    <td>${item.author || '-'}</td>
-                    <td>${actions}</td>
-                </tr>`; 
-            }); 
-        }
-    };
-        
-    // Event Listener per chiusura dropdown materiali
-    document.addEventListener('click', (e) => { const dropdown = Utils.id('materialDropdown'); const searchInput = Utils.id('materialSearch'); if (dropdown && !dropdown.contains(e.target) && e.target !== searchInput) { dropdown.classList.remove('show'); } });
-
-    // Inizializzazione Store e Auth
-    Store.setup();
-    window.onload = Auth.init;
-    </script>
-</body>
-</html>   doc.text(Utils.sanitize(data.client.nome), left + 25, y);
             
             doc.setTextColor(...gray); 
             doc.setFont('helvetica', 'normal'); 
